@@ -1,0 +1,105 @@
+"""
+It converts the water mask into multiple polygons, from which it selects
+the largest polygon.
+If we assume the reservoir of interest is centered on the mask, and the mask encloses
+the reservoir with suitable tightness, this will always return the polygon of interest.
+
+SciPy is a scientific computing library built on NumPy.
+It contains:
+    -Optimization
+    -Integration
+    -Linear algebra
+    -Signal processing
+    -Image processing
+ndimage stands for n dimensional image processing, it works on numpy arrays and treats
+them as images. our water mask is just an np.ndarray of shape (H,W)
+label() is the function we use :
+    - it takes an array
+    - and uses 8-connectivity to distinguish neighbours
+    - for example an array of:
+    1 1 1 0 0
+    1 1 1 0 1
+    1 1 1 0 1
+    0 0 0 0 1
+    - will return :
+    1 1 1 0 0
+    1 1 1 0 0
+    1 1 1 0 2
+    0 0 0 0 2
+    - thereby distinguishing the connected 1's with the disconnected 1's
+    - if it had return :
+    0 1 0 0 0
+    1 1 1 0 0
+    0 1 0 0 2
+    0 0 0 0 2
+    - that would have been 4 connectivity, not 8 connectivity.
+"""
+
+import numpy as np
+from scipy.ndimage import label
+from skimage import measure
+from sentinelhub import BBox, CRS, transform_point
+from typing import Tuple
+
+def largest_connected_component(mask) -> np.ndarray:
+    """
+    Keeps only the largest 8 connected component polygon in the water mask
+    """
+    mask = np.asarray(mask)
+    mask = mask.astype(bool)
+
+    structure = np.ones((3,3), dtype=int)
+    labeled, num_features = label(mask, structure=structure)
+
+    #empty mask
+    if num_features == 0:
+        return mask
+    #counting how many times an integer appears
+    component_sizes = np.bincount(labeled.ravel())
+    #ignoring the number of times 0 appears
+    component_sizes[0] = 0
+    #the group which appears the most amount of time
+    largest_label = component_sizes.argmax()
+    return labeled == largest_label
+
+def select_closest_component(
+        mask : np.ndarray,
+        dam_coords_wgs84 : Tuple[float,float],
+        bbox_utm : BBox,
+        resolution : float
+    ) -> np.ndarray:
+    """
+    This solves the panshet-varasgaon problem.
+    Selects the largest contour closest to the inputted dam.
+    """
+    mask = np.array(mask).astype(bool)
+    labeled = measure.label(mask)
+    regions = measure.regionprops(labeled)
+
+    if len(regions) == 0:
+        raise ValueError("No water bodies found.")
+    
+    lat, lon = dam_coords_wgs84
+    utm_crs = bbox_utm.crs
+    dam_x, dam_y = transform_point(
+        (lon, lat),
+        CRS.WGS84,
+        utm_crs
+    )
+    
+    min_dist = np.inf
+    selected_label = None
+    for region in regions:
+        row, col = region.centroid
+        x = bbox_utm.min_x + col * resolution
+        y = bbox_utm.max_y - row * resolution
+        distance = np.sqrt((x - dam_x) ** 2 + (y - dam_y) ** 2)
+        if distance < min_dist:
+            min_distance = distance
+            selected_label = region.label
+    selected_mask = labeled == selected_label
+    return selected_mask
+
+
+
+
