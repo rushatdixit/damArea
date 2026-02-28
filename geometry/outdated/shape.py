@@ -246,14 +246,14 @@ class Polygon:
         y_c /= len(self.vertices)
         return (x_c, y_c)
     
-    def edges(self) -> Generator[Line, None, None]:
+    def edges(self) -> Generator[Segment, None, None]:
         """
         returns a generator of lines representing the edges of the polygon
         """
         n = len(self.vertices)
         for i in range(n):
             next = (i+1) % n
-            line = Line(self.vertices[i], self.vertices[next])
+            line = Segment(self.vertices[i], self.vertices[next])
             yield line
 
     def point_in_polygon(self, point : Point) -> bool:
