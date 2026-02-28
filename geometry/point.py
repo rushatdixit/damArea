@@ -59,10 +59,13 @@ class Point:
     def __mul__(self, scalar : float) -> Point:
         return Point(
             tuple(
-                self.coordinates[i] * scalar
-                for i in range(self.dimension)
+                coord*scalar
+                for coord in self.coordinates
             )
         )
+    
+    def __rmul__(self, scalar : float) -> Point:
+        return self*scalar
     
     def __truediv__(self, scalar : float) -> Point:
         return Point(

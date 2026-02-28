@@ -7,8 +7,9 @@ import numpy as np
 
 def greens_area(polygon : np.ndarray) -> float:
     """
-    Docstring for greens_area
-    Computes area using shoelace formula
+    Computes area using shoelace formula \n
+    This is the one which uses np.ndarray as an input
+
     :param polygon: An n by 2 array of (x,y) coords
     :type polygon: np.ndarray
     :return: Area in sq metres
