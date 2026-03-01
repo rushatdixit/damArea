@@ -34,7 +34,7 @@ from skimage.measure import label, regionprops
 
 from fetch_dam.get_dam import dam_name_to_bbox, dam_name_to_coords
 from sentinel.aoi import expand_bbox_meters
-from sentinel.request2 import request_sentinel_data, request_rgb_data
+from sentinel.request import request_sentinel_data, request_rgb_data
 from sentinel.ndwi import compute_ndwi, water_mask
 
 from processing.mask_processing import select_closest_component

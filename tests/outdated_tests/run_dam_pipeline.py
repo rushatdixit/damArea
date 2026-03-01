@@ -14,7 +14,7 @@ from sentinelhub import CRS, BBox
 
 from fetch_dam.get_dam import dam_name_to_coords, dam_name_to_bbox
 from sentinel.aoi import bbox_from_coords, expand_bbox_meters
-from sentinel.request2 import request_sentinel_data, request_rgb_data
+from sentinel.request import request_sentinel_data, request_rgb_data
 from sentinel.ndwi import compute_ndwi, water_mask
 
 

@@ -2,7 +2,7 @@ import numpy as np
 from typing import Tuple
 from sentinelhub import BBox
 from sentinel.tile_stream import split_bbox_into_tiles
-from sentinel.request2 import request_sentinel_data
+from sentinel.request import request_sentinel_data
 from sentinel.ndwi import compute_ndwi, water_mask
 
 def get_pixel_area(
