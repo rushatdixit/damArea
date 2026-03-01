@@ -1,9 +1,5 @@
 """
-==================================================
 Dam Area Measure — Visualization Module
-==================================================
-
-Pure rendering layer.
 
 This module:
 - Does NOT compute NDWI
@@ -18,11 +14,6 @@ Designed for research-quality figures.
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-# --------------------------------------------------
-# RGB NORMALIZATION
-# --------------------------------------------------
-
 def normalize_rgb(rgb: np.ndarray) -> np.ndarray:
     """
     Robust RGB normalization using percentile stretch.
@@ -35,11 +26,6 @@ def normalize_rgb(rgb: np.ndarray) -> np.ndarray:
 
     return rgb
 
-
-# --------------------------------------------------
-# PIPELINE OVERVIEW FIGURE
-# --------------------------------------------------
-
 def show_pipeline_overview(
     rgb: np.ndarray,
     ndwi: np.ndarray,
@@ -47,7 +33,7 @@ def show_pipeline_overview(
     selected_mask: np.ndarray,
     contour_pixels: np.ndarray,
     area_km2: float,
-):
+) -> None:
     """
     Displays the full pipeline progression:
 
@@ -100,17 +86,12 @@ def show_pipeline_overview(
     plt.tight_layout()
     plt.show()
 
-
-# --------------------------------------------------
-# INDIVIDUAL STAGE FIGURES
-# --------------------------------------------------
-
 def show_individual_figures(
     rgb: np.ndarray,
     ndwi: np.ndarray,
     full_mask: np.ndarray,
     selected_mask: np.ndarray,
-):
+)-> None:
     """
     Displays each stage separately for detailed inspection.
     """
