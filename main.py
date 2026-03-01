@@ -3,10 +3,10 @@ Docstring for main
 This is the file which runs the project.
 """
 import sys
-from pipeline.acquire_bbox import acquire_aoi
+from pipeline.acquisition import acquire_aoi
 from pipeline.utilities import adjust_resolution, ensure_utm
-from pipeline.bbox_to_data import acquire_satellite_data
-from pipeline.process_data import choose_reservoir
+from pipeline.raw_data import acquire_satellite_data
+from pipeline.processing import choose_reservoir
 from pipeline.data_to_area import get_pixel_area
 from pipeline.visuals import show_individual_figures, show_pipeline_overview
 
