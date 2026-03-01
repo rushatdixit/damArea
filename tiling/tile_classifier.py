@@ -4,9 +4,7 @@ classifies whether a tile lies inside a polygon
 
 from geometry.polygon import Polygon
 from tiling.tile import Tile
-from geometry.point import Point
 from tiling.classify_tile import TileClass
-import math
 
 def tile_in_polygon(tile : Tile, polygon : Polygon) -> TileClass:
     """

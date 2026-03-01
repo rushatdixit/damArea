@@ -4,8 +4,6 @@ Streaming tile-based Sentinel water area processor
 
 import numpy as np
 from sentinelhub import CRS, BBox
-from sentinelhub import transform_point
-
 from sentinel.request import request_sentinel_data
 from sentinel.ndwi import compute_ndwi, water_mask
 

@@ -6,10 +6,7 @@ kind of like integrating a space in R2 using dxdy
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Tuple
-from geometry.polygon import Polygon
 from tiling.tile import Tile
-from geometry.segment import Segment
-from geometry.point import Point
 import math
 
 @dataclass(frozen=True)
