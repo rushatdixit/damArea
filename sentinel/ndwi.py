@@ -1,7 +1,6 @@
 import numpy as np
 from typing import List
 
-
 def compute_ndwi(data: List[List[List[float]]]) -> List[List[float]]:
     """
     data: 3D list -> [row][col][band]

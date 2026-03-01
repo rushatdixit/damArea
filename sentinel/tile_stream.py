@@ -6,7 +6,7 @@ import numpy as np
 from sentinelhub import CRS, BBox
 from sentinelhub import transform_point
 
-from sentinel.request2 import request_sentinel_data
+from sentinel.request import request_sentinel_data
 from sentinel.ndwi import compute_ndwi, water_mask
 
 
@@ -15,10 +15,6 @@ def split_bbox_into_tiles(bbox: BBox, tile_size_m: int):
     Splits a bbox into square tiles in meters (UTM space).
     Accepts bbox in either WGS84 or UTM.
     """
-
-    # --------------------------------------------------
-    # 1️⃣ Ensure bbox is in UTM
-    # --------------------------------------------------
 
     if bbox.crs == CRS.WGS84:
 
@@ -31,10 +27,6 @@ def split_bbox_into_tiles(bbox: BBox, tile_size_m: int):
 
     else:
         utm_crs = bbox.crs
-
-    # --------------------------------------------------
-    # 2️⃣ Now safely tile in meters
-    # --------------------------------------------------
 
     min_x, min_y, max_x, max_y = bbox
 
