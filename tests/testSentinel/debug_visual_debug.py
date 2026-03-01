@@ -21,7 +21,7 @@ matplotlib.use("Agg")  # Prevent GUI popups
 
 import matplotlib.pyplot as plt
 
-from pipeline.run_dam_pipeline import visual_debug
+from tests.outdated_tests.run_dam_pipeline import visual_debug
 from sentinel.ndwi import compute_ndwi, water_mask
 
 

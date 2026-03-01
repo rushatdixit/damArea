@@ -41,7 +41,7 @@ matplotlib.use("Agg")  # Headless backend for CI / pytest
 import matplotlib.pyplot as plt
 import pytest
 
-from pipeline.run_dam_pipeline import visual_debug
+from tests.outdated_tests.run_dam_pipeline import visual_debug
 from sentinel.ndwi import compute_ndwi, water_mask
 
 
