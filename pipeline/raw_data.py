@@ -1,9 +1,9 @@
 import numpy as np
 from sentinelhub import CRS, BBox
 from sentinel.ndwi import compute_ndwi, water_mask
-from sentinel.request2 import request_rgb_data, request_sentinel_data
-from pipeline.utilities import ensure_utm, adjust_resolution
+from sentinel.request import request_rgb_data, request_sentinel_data
 from pipeline.models import SatelliteData
+
 def acquire_satellite_data(
             expanded_dam_bbox : BBox,
             time_interval,

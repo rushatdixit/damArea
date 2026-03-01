@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from typing import List, Tuple, Generator
 from geometry.point import Point
 from geometry.segment import Segment
-import math
 
 @dataclass(frozen=True)
 class Tile:

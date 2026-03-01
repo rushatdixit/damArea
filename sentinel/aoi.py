@@ -7,7 +7,6 @@ We are creating:
 
 from typing import List, Tuple
 from sentinelhub import BBox, CRS, Geometry
-from sentinelhub import BBoxSplitter
 
 def expand_bbox_meters(bbox: BBox, expansion_m: float) -> BBox:
     """

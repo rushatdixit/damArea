@@ -1,9 +1,7 @@
-from fetch_dam.get_dam import dam_name_to_bbox
-from sentinel.aoi import expand_bbox_meters
-from sentinel.request2 import request_rgb_data, request_sentinel_data
-
 from sentinelhub import BBox
 from fetch_dam.get_dam import dam_name_to_bbox
+from sentinel.aoi import expand_bbox_meters
+
 def acquire_aoi(dam_name : str, expansion : int) -> BBox:
     """
     Given a name and an expansion, gives you the dam bbox expanded by "expansion" meters on all sides.

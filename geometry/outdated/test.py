@@ -1,6 +1,6 @@
 from geometry.polygon import Polygon
 from tiling.tile import Tile
-from geometry.line import Line
+from geometry.segment import Segment
 
 def main():
     print("This is the file for testing all the classes or functions in geometry.")
@@ -69,14 +69,14 @@ def test_tile():
 
 #test for line
 def test_line():
-    print(Line.__doc__)
+    print(Segment.__doc__)
     x = input("Enter 'c' to continue: ")
     if x == 'c':
         x1 = float(input("Enter the x coordinate of point 1: "))
         y1 = float(input("Enter the y coordinate of point 1: "))
         x2 = float(input("Enter the x coordinate of point 2: "))
         y2 = float(input("Enter the y coordinate of point 2: "))
-        line = Line((x1, y1), (x2, y2))
+        line = Segment((x1, y1), (x2, y2))
         print("Your line has been created, press 'c' to continue: ")
         x = input("")
         if x == 'c':
@@ -85,7 +85,7 @@ def test_line():
             print("Testing all further function with respect to (0,0) and intersection with respect to (0,0) and (1,1)")
             print(f"Side of point: {line.side((0, 0))}")
             print(f"Point on line: {line.point_on_line((0, 0))}")
-            print(f"Intersection: {line.intersection(Line((0, 0), (1, 1)))}")
+            print(f"Intersection: {line.intersection(Segment((0, 0), (1, 1)))}")
             print(f"Length: {line.length()}")
     else:
         print("Invalid choice, function returning now.")

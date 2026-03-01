@@ -10,7 +10,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Tuple
 from geometry.point import Point
-import math
 
 @dataclass(frozen=True)
 class Segment:
