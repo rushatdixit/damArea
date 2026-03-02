@@ -25,7 +25,7 @@ def select_reservoir_connected_to_dam(
         dam_lon: float,
         bbox_utm: BBox,
         resolution: float,
-        min_area_km2: float = 0.01,
+        min_area_km2: float = 0.5,
         is_debug : bool = True
     ) -> Tuple[np.ndarray, float]:
     """

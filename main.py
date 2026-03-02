@@ -3,7 +3,8 @@ Docstring for main
 This is the file which runs the project.
 """
 import sys
-from pipeline.acquisition import acquire_aoi
+import time
+from pipeline.acquisition import acquire_aoi, get_expansion
 from pipeline.utilities import adjust_resolution, ensure_utm
 from pipeline.raw_data import acquire_satellite_data
 from pipeline.processing import choose_reservoir
@@ -12,18 +13,21 @@ from pipeline.visuals import show_individual_figures, show_pipeline_overview
 
 #set the constants
 TIME_INTERVAL = ("2023-01-01", "2023-12-31")
-EXPANSION_METERS = float(input("Expansion : "))  # expand bbox by 5km
-RESOLUTION = 10
+EXPANSION_METERS = float(input("Expansion : "))
+RESOLUTION = int(input("Set your resolution: "))
 
 def main():
     resolution = RESOLUTION
     threshold = 0.2
     if len(sys.argv) < 2:
-        print("Usage: python3 -m sentinel.run_dam_pipeline \"Dam Name\"")
+        print("Usage: python3 -m main \"Dam Name\"")
         sys.exit(1)
     dam_name = sys.argv[1]
     print(f"\nRunning pipeline for: {dam_name}\n")
 
+    start = time.time()
+    EXPANSION_METERS = get_expansion(dam_name, TIME_INTERVAL, 2000, resolution=500)
+    print(f"{EXPANSION_METERS}")
     expanded_dam_bbox = acquire_aoi(dam_name, EXPANSION_METERS)
     dam_lon = (expanded_dam_bbox.min_x + expanded_dam_bbox.max_x) / 2
     dam_lat = (expanded_dam_bbox.min_y + expanded_dam_bbox.max_y) / 2
@@ -53,6 +57,9 @@ def main():
         resolution=resolution
         )
     area_km2 = area_m2/1e6
+
+    end = time.time()
+    print(f"Time elapsed : {end - start}")
 
     show_pipeline_overview(
         rgb=data.rgb,
