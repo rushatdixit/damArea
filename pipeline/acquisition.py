@@ -73,4 +73,4 @@ def get_expansion(
 
         bbox = acquire_aoi(dam_name=dam_name, expansion=initial_expansion)
     
-    return initial_expansion+1000
+    return initial_expansion+initial_expansion/10
