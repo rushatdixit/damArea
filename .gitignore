@@ -20,3 +20,4 @@ venv/
 .idea/
 
 .tests/
+/tests
