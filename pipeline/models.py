@@ -30,7 +30,7 @@ class ReservoirResult:
 @dataclass
 class ThresholdUncertainty:
     thresholds : List[float]
-    area_km2 : List[float]
+    areas_km2 : List[float]
     @property
     def mean_km2(self) -> float:
         return float(np.mean(self.area_km2))
