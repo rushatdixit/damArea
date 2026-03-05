@@ -8,8 +8,9 @@ It contains two functions:
 import requests
 from typing import Dict
 from sentinelhub import BBox, CRS
+from pipeline.models import FetchedDamData
 
-def dam_name_to_coords(dam_name) -> Dict:
+def dam_name_to_coords(dam_name) -> FetchedDamData:
     """
     Given a dam name returns a dict with all the relevant information \n
     Uses openstreetmap
@@ -47,11 +48,7 @@ def dam_name_to_coords(dam_name) -> Dict:
             lat = float(result["lat"])
             lon = float(result["lon"])
             bbox = [float(x) for x in result["boundingbox"]]
-            return {
-                "latitude": lat,
-                "longitude": lon,
-                "bounding_box": bbox
-            }
+            return FetchedDamData(lat, lon, bbox)
         
     raise ValueError("Dam not found using any query strategy")
 
@@ -67,7 +64,7 @@ def dam_name_to_bbox(name: str) -> BBox:
     """
 
     result = dam_name_to_coords(name)
-    bb = result["bounding_box"]
+    bb = result.bbox
 
     min_lat = float(bb[0])
     max_lat = float(bb[1])
