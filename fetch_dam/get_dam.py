@@ -9,22 +9,40 @@ import requests
 import json
 import time
 from pathlib import Path
+from functools import lru_cache
 from sentinelhub import BBox, CRS
 from pipeline.models import FetchedDamData
 
 DATABASE_PATH = Path(__file__).parent / "dam_database.json"
+_DB_CACHE = None
 
 def load_database():
+    global _DB_CACHE
+
+    if _DB_CACHE is not None:
+        return _DB_CACHE
+    
     if DATABASE_PATH.exists():
-        with open(DATABASE_PATH, "r") as f:
-            return json.load(f)
-    return {}
+        try:
+            with open(DATABASE_PATH, "r") as f:
+                _DB_CACHE = json.load(f)
+        except json.JSONDecodeError:
+            _DB_CACHE = {}
+    else:
+        _DB_CACHE = {}
+
+    return _DB_CACHE
 
 
 def save_database(db):
+    global _DB_CACHE
+
+    _DB_CACHE = db
+
     with open(DATABASE_PATH, "w") as f:
         json.dump(db, f, indent=4)
 
+@lru_cache
 def dam_name_to_coords(dam_name : str) -> FetchedDamData:
     """
     Given a dam name returns a dict with all the relevant information \n
@@ -46,7 +64,8 @@ def dam_name_to_coords(dam_name : str) -> FetchedDamData:
     db = load_database()
     
     if key in db:
-        coords = db[dam_name.strip().lower()]
+        print("Found dam in database. Skipping openstreetmap query.")
+        coords = db[key]
         return FetchedDamData(coords["latitude"], coords["longitude"], coords["bbox"])
     
     headers = {
