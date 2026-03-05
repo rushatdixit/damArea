@@ -26,7 +26,8 @@ def get_expansion(
         time_interval : Any,       
         initial_expansion : int = 2000, 
         resolution : int = 500, 
-        threshold : int = 10
+        threshold : int = 10,
+        breaking_expansion : int = 20000
         ) -> int:
     """
     Given a dam name, finds the optimal expansion. \n ie. you don't have to guess the expansion anymore.
@@ -68,9 +69,9 @@ def get_expansion(
             break
         
         initial_expansion += 2000
-        if initial_expansion > 20000:
+        if initial_expansion > breaking_expansion:
             break
 
-        bbox = acquire_aoi(dam_name=dam_name, expansion=initial_expansion)
+        bbox = expand_bbox_meters(initial_bbox, initial_expansion)
     
     return initial_expansion+initial_expansion/10
