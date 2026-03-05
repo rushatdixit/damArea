@@ -33,15 +33,15 @@ class ThresholdUncertainty:
     areas_km2 : List[float]
     @property
     def mean_km2(self) -> float:
-        return float(np.mean(self.area_km2))
+        return float(np.mean(self.areas_km2))
 
     @property
     def min_km2(self) -> float:
-        return float(np.min(self.area_km2))
+        return float(np.min(self.areas_km2))
 
     @property
     def max_km2(self) -> float:
-        return float(np.max(self.area_km2))
+        return float(np.max(self.areas_km2))
 
     @property
     def range_km2(self) -> float:
