@@ -50,7 +50,7 @@ def threshold_sensitivity(
             )
 
         area = get_pixel_area(
-            selected_reservoir.mask,
+            selected_reservoir.mask[0],
             resolution=resolution
         )
 
