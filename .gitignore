@@ -21,3 +21,4 @@ venv/
 
 .tests/
 /tests
+fetch_dam/dam_database.json
