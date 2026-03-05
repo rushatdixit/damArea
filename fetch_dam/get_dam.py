@@ -6,11 +6,26 @@ It contains two functions:
 """
 
 import requests
-from typing import Dict
+import json
+import time
+from pathlib import Path
 from sentinelhub import BBox, CRS
 from pipeline.models import FetchedDamData
 
-def dam_name_to_coords(dam_name) -> FetchedDamData:
+DATABASE_PATH = Path(__file__).parent / "dam_database.json"
+
+def load_database():
+    if DATABASE_PATH.exists():
+        with open(DATABASE_PATH, "r") as f:
+            return json.load(f)
+    return {}
+
+
+def save_database(db):
+    with open(DATABASE_PATH, "w") as f:
+        json.dump(db, f, indent=4)
+
+def dam_name_to_coords(dam_name : str) -> FetchedDamData:
     """
     Given a dam name returns a dict with all the relevant information \n
     Uses openstreetmap
@@ -18,13 +33,25 @@ def dam_name_to_coords(dam_name) -> FetchedDamData:
     :param dam_name: Name of the dam
     :type dam_name: str
     """
+
     url = "https://nominatim.openstreetmap.org/search"
-    queries = {
+    key = dam_name.strip().lower()
+    queries = [
         f"{dam_name} Dam",
         f"{dam_name} Reservoir",
         dam_name,
         f"{dam_name.split()[0]} Dam" #first word + dam
-    }
+    ]
+
+    db = load_database()
+    
+    if key in db:
+        coords = db[dam_name.strip().lower()]
+        return FetchedDamData(coords["latitude"], coords["longitude"], coords["bbox"])
+    
+    headers = {
+            "User-Agent": "DamAreaMeasure/0.1 (research project)"
+        }
     for query in queries:
         params = {
             "q": query,
@@ -32,12 +59,10 @@ def dam_name_to_coords(dam_name) -> FetchedDamData:
             "limit": 1,
             "countrycodes": "in"
         }
-        headers = {
-            "User-Agent": "DamAreaMeasure/0.1 (research project)"
-        }
-
-        response = requests.get(url, params=params, headers=headers)
+        
+        response = requests.get(url, params=params, headers=headers, timeout=10)
         print("Searching for:", params["q"])
+        time.sleep(1)
 
         response.raise_for_status()
         data = response.json()
@@ -48,6 +73,12 @@ def dam_name_to_coords(dam_name) -> FetchedDamData:
             lat = float(result["lat"])
             lon = float(result["lon"])
             bbox = [float(x) for x in result["boundingbox"]]
+            db[key]= {
+                "latitude" : lat,
+                "longitude" : lon,
+                "bbox" : bbox
+            }
+            save_database(db)
             return FetchedDamData(lat, lon, bbox)
         
     raise ValueError("Dam not found using any query strategy")
