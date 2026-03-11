@@ -78,7 +78,8 @@ def area_characteristics(tile : Tile, polygon : Polygon, epsilon) -> Tuple[float
             return (area, uncertainty, max_depth+1, boundary_count)
 
 def estimate_area(polygon : Polygon, tile_size : float, overlap : float, epsilon) -> Tuple[float, float, int, int, Tuple[float,float]]:
-    grid = TileGrid(polygon.axis_aligned_bounds(), tile_size, overlap)
+    # Force overlap=0 for area integration to prevent double-counting
+    grid = TileGrid(polygon.axis_aligned_bounds(), tile_size, overlap=0)
     area = 0
     uncertainty = 0
     max_depth = 0
