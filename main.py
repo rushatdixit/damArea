@@ -6,7 +6,7 @@ import sys
 import time
 from pipeline.acquisition import acquire_aoi, get_expansion
 from pipeline.utilities import adjust_resolution, ensure_utm
-from fetch_dam.get_dam import dam_name_to_coords
+from objects.dam import Dam
 from pipeline.raw_data import acquire_satellite_data
 from pipeline.processing import choose_reservoir
 from pipeline.data_to_area import get_pixel_area
@@ -27,14 +27,12 @@ def main():
     print(f"\nRunning pipeline for: {dam_name}\n")
 
     start = time.time()
-    EXPANSION_METERS = get_expansion(dam_name, TIME_INTERVAL, 2000, resolution=500)
+    dam = Dam(name=dam_name)
+    EXPANSION_METERS = get_expansion(dam, TIME_INTERVAL, 2000, resolution=500)
     print(f"{EXPANSION_METERS}")
-    expanded_dam_bbox = acquire_aoi(dam_name, EXPANSION_METERS)
-    fetched = dam_name_to_coords(dam_name)
-    dam_lat = fetched.latitude
-    dam_lon = fetched.longitude
-    assert -90 <= dam_lat <= 90
-    assert -180 <= dam_lon <= 180
+    expanded_dam_bbox = acquire_aoi(dam, EXPANSION_METERS)
+    assert -90 <= dam.latitude() <= 90
+    assert -180 <= dam.longitude() <= 180
 
     expanded_dam_bbox = ensure_utm(expanded_dam_bbox)
     resolution = adjust_resolution(expanded_dam_bbox, resolution=resolution)
@@ -49,8 +47,7 @@ def main():
     reservoir = choose_reservoir(
             dam_mask=data.mask,
             expanded_dam_bbox=expanded_dam_bbox,
-            dam_lat=dam_lat,
-            dam_lon=dam_lon,
+            dam=dam,
             resolution=resolution,
             )
     
