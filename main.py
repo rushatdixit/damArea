@@ -6,6 +6,7 @@ import sys
 import time
 from pipeline.acquisition import acquire_aoi, get_expansion
 from pipeline.utilities import adjust_resolution, ensure_utm
+from fetch_dam.get_dam import dam_name_to_coords
 from pipeline.raw_data import acquire_satellite_data
 from pipeline.processing import choose_reservoir
 from pipeline.data_to_area import get_pixel_area
@@ -29,8 +30,9 @@ def main():
     EXPANSION_METERS = get_expansion(dam_name, TIME_INTERVAL, 2000, resolution=500)
     print(f"{EXPANSION_METERS}")
     expanded_dam_bbox = acquire_aoi(dam_name, EXPANSION_METERS)
-    dam_lon = (expanded_dam_bbox.min_x + expanded_dam_bbox.max_x) / 2
-    dam_lat = (expanded_dam_bbox.min_y + expanded_dam_bbox.max_y) / 2
+    fetched = dam_name_to_coords(dam_name)
+    dam_lat = fetched.latitude
+    dam_lon = fetched.longitude
     assert -90 <= dam_lat <= 90
     assert -180 <= dam_lon <= 180
 
