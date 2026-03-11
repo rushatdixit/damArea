@@ -6,7 +6,6 @@ from functools import cached_property
 from dataclasses import dataclass
 from sentinelhub import BBox
 from fetch_dam.get_dam import dam_name_to_coords
-from pipeline.acquisition import acquire_aoi
 from pipeline.models import FetchedDamData
 
 @dataclass
@@ -17,8 +16,8 @@ class Dam:
         """
         The area of interest (aoi). It is that patch of land you get when you set expansion = 2000m
         """
-
-        aoi = acquire_aoi(self.name, expansion=2000)
+        from pipeline.acquisition import acquire_aoi
+        aoi = acquire_aoi(self, expansion=2000)
         return aoi
 
     @cached_property
