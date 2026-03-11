@@ -14,7 +14,7 @@ def choose_reservoir(
         wants_debugs : bool = True
     ) -> ReservoirResult:
 
-    assert expanded_dam_bbox.crs != CRS.WGS84, \
+    assert hasattr(expanded_dam_bbox, 'crs') and expanded_dam_bbox.crs != CRS.WGS84, \
         "choose_reservoir requires UTM bbox"
     assert isinstance(dam_lat, float)
     assert isinstance(dam_lon, float)
