@@ -45,11 +45,17 @@ def get_expansion(
     initial_bbox = acquire_aoi(dam=dam, expansion=initial_expansion)
     bbox = initial_bbox
 
+    from pipeline.utilities import ensure_utm, adjust_resolution
     while True:
+
+        # API resolution limit check (Needs UTM to calculate Max Pixels correctly)
+        bbox_utm = ensure_utm(bbox)
+        safe_resolution = adjust_resolution(bbox_utm, resolution)
+
         ndwi_bands = request_sentinel_data(
             aoi=bbox,
             time_interval=time_interval,
-            resolution=resolution
+            resolution=safe_resolution
             )
         
         mask = water_mask(ndwi_bands)
