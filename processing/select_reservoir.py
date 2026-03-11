@@ -17,12 +17,12 @@ from typing import Tuple
 from scipy.ndimage import label
 from skimage.measure import find_contours
 from sentinelhub import CRS, transform_point, BBox
+from objects.dam import Dam
 
 
 def select_reservoir_connected_to_dam(
         mask: np.ndarray,
-        dam_lat: float,
-        dam_lon: float,
+        dam: Dam,
         bbox_utm: BBox,
         resolution: float,
         min_area_km2: float = 0.5,
@@ -31,7 +31,7 @@ def select_reservoir_connected_to_dam(
     """
     Parameters
     mask : binary water mask
-    dam_lat, dam_lon : dam location (WGS84)
+    dam : Dam object containing location (WGS84)
     bbox_utm : bounding box in UTM
     resolution : meters per pixel
     min_area_km2 : ignore components smaller than this
@@ -52,7 +52,7 @@ def select_reservoir_connected_to_dam(
 
     utm_crs = bbox_utm.crs
     dam_x, dam_y = transform_point(
-        (dam_lon, dam_lat),
+        (dam.longitude(), dam.latitude()),
         CRS.WGS84,
         utm_crs
     )

@@ -5,24 +5,26 @@ from fetch_dam.get_dam import dam_name_to_bbox
 from sentinel.aoi import expand_bbox_meters
 from sentinel.request import request_sentinel_data
 from sentinel.ndwi import water_mask
+from sentinelhub import CRS, BBox
+from objects.dam import Dam
 
-def acquire_aoi(dam_name : str, expansion : int) -> BBox:
+def acquire_aoi(dam : Dam, expansion : int) -> BBox:
     """
-    Given a name and an expansion, gives you the dam bbox expanded by "expansion" meters on all sides.
+    Given a Dam and an expansion, gives you the dam bbox expanded by "expansion" meters on all sides.
     
-    :param dam_name: Name of the dam/reservoir
-    :type dam_name: str
+    :param dam: The Dam object
+    :type dam: Dam
     :param expansion: Expansion in metres
     :type expansion: int
     :return: Expanded dam bbox
     :rtype: BBox
     """
-    dam_bbox = dam_name_to_bbox(dam_name)
+    dam_bbox = BBox(bbox=dam.fetched_dam_data.bbox, crs=CRS.WGS84)
     expanded_dam_bbox = expand_bbox_meters(dam_bbox, expansion)
     return expanded_dam_bbox
 
 def get_expansion(
-        dam_name : str,
+        dam : Dam,
         time_interval : Any,       
         initial_expansion : int = 2000, 
         resolution : int = 500, 
@@ -32,15 +34,15 @@ def get_expansion(
     """
     Given a dam name, finds the optimal expansion. \n ie. you don't have to guess the expansion anymore.
 
-    :param dam_name: Name of the dam
-    :type dam_name: str
+    :param dam: The Dam object
+    :type dam: Dam
     :param initial_expansion: Initial BBox obtained, set to 2Kms
     :type initial_expansion: int
     :param threshold: Minimum number of water pixels which touch the BBox
     :type threshold: int
     """
 
-    initial_bbox = acquire_aoi(dam_name=dam_name, expansion=initial_expansion)
+    initial_bbox = acquire_aoi(dam=dam, expansion=initial_expansion)
     bbox = initial_bbox
 
     while True:

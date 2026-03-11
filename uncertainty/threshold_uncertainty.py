@@ -6,12 +6,12 @@ from pipeline.processing import choose_reservoir
 from pipeline.raw_data import acquire_satellite_data
 from pipeline.data_to_area import get_pixel_area
 from pipeline.models import ThresholdUncertainty
+from objects.dam import Dam
 def threshold_sensitivity(
         dam_bbox : BBox,
         resolution : float,
         time_interval : Any,
-        dam_lat : float,
-        dam_lon : float,
+        dam : Dam,
         threshold : float = 0.2,
         epsilon : float = 0.01,
         sampling_density : int = 10
@@ -40,10 +40,9 @@ def threshold_sensitivity(
         mask = np.array(water_mask(satellite_data.ndwi, threshold=used_threshold))
 
         selected_reservoir = choose_reservoir(
-                mask,
-                dam_bbox,
-                dam_lat=dam_lat,
-                dam_lon=dam_lon,
+                dam_mask=mask,
+                expanded_dam_bbox=dam_bbox,
+                dam=dam,
                 resolution=resolution,
                 min_area_km2=0.01,
                 wants_debugs=False
