@@ -27,8 +27,8 @@ class Dam:
         return coords
     
     def latitude(self) -> float:
-        return self.coordinates.latitude
+        return self.fetched_dam_data.latitude
     
     def longitude(self) -> float:
-        return self.coordinates.longitude
+        return self.fetched_dam_data.longitude
     
