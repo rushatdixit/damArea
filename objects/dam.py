@@ -6,7 +6,7 @@ from functools import cached_property
 from dataclasses import dataclass
 from sentinelhub import BBox
 from fetch_dam.get_dam import dam_name_to_coords
-from pipeline.models import FetchedDamData
+from objects.results import FetchedDamData
 
 @dataclass
 class Dam:

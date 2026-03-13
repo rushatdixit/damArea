@@ -5,7 +5,7 @@ from sentinel.ndwi import water_mask
 from pipeline.processing import choose_reservoir
 from pipeline.raw_data import acquire_satellite_data
 from pipeline.data_to_area import get_pixel_area
-from pipeline.models import ThresholdUncertainty
+from objects.results import ThresholdUncertainty
 from objects.dam import Dam
 def threshold_sensitivity(
         dam_bbox : BBox,

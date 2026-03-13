@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from functools import lru_cache
 from sentinelhub import BBox, CRS
-from pipeline.models import FetchedDamData
+from objects.results import FetchedDamData
 
 DATABASE_PATH = Path(__file__).parent / "dam_database.json"
 _DB_CACHE = None

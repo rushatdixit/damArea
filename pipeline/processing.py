@@ -2,7 +2,7 @@ import numpy as np
 from sentinelhub import BBox, CRS
 from processing.select_reservoir import select_reservoir_connected_to_dam
 from processing.mask_processing import largest_connected_component
-from pipeline.models import ReservoirResult
+from objects.results import ReservoirResult
 from objects.dam import Dam
 
 def choose_reservoir(
