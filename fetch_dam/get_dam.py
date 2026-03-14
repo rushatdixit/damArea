@@ -76,7 +76,6 @@ def dam_name_to_coords(dam_name : str) -> FetchedDamData:
             "q": query,
             "format": "json",
             "limit": 1,
-            "countrycodes": "in"
         }
         
         response = requests.get(url, params=params, headers=headers, timeout=10)

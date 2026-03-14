@@ -19,7 +19,7 @@ def acquire_aoi(dam : Dam, expansion : int) -> BBox:
     :return: Expanded dam bbox
     :rtype: BBox
     """
-    dam_bbox = BBox(bbox=dam.fetched_dam_data.bbox, crs=CRS.WGS84)
+    dam_bbox = dam_name_to_bbox(dam.name)
     expanded_dam_bbox = expand_bbox_meters(dam_bbox, expansion)
     return expanded_dam_bbox
 
@@ -29,7 +29,7 @@ def get_expansion(
         initial_expansion : int = 2000, 
         resolution : int = 500, 
         threshold : int = 10,
-        breaking_expansion : int = 20000
+        breaking_expansion : int = 100000
         ) -> int:
     """
     Given a dam name, finds the optimal expansion. \n ie. you don't have to guess the expansion anymore.
