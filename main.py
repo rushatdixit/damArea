@@ -131,7 +131,8 @@ def main():
         full_mask=refined_data.mask,
         selected_mask=refined_reservoir.mask[0],
         contour_pixels=refined_reservoir.contour,
-        area_km2=area_km2
+        area_km2=area_km2,
+        uncertainty_km2=total_unc
     )
 
     show_individual_figures(
