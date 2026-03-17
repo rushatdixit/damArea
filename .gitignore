@@ -20,3 +20,4 @@ venv/
 .idea/
 
 damArea/tests/
+damArea/fetch_dam/dam_database.json

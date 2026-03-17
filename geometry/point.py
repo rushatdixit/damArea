@@ -128,7 +128,7 @@ class Point:
         if self.dimension != other.dimension:
             raise ValueError("Points must have the same dimension")
         elif self.dimension > 2:
-            print("We are not ready for vectors of more than 2 dimensions.")
+            raise NotImplementedError("We are not ready for vectors of more than 2 dimensions.")
         else:
             return (self.coordinates[0]*other.coordinates[1] - self.coordinates[1]*other.coordinates[0])
 

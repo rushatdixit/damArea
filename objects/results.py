@@ -1,7 +1,13 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Any
+from sentinelhub import BBox
 import numpy as np
 
+@dataclass(frozen=True)
+class FetchedDamData:
+    latitude : float
+    longitude : float
+    bbox : BBox | Any
 
 @dataclass(frozen=True)
 class SatelliteData:

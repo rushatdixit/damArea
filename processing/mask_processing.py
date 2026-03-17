@@ -59,6 +59,8 @@ def largest_connected_component(mask) -> np.ndarray:
     #ignoring the number of times 0 appears
     component_sizes[0] = 0
     #the group which appears the most amount of time
+    if len(component_sizes) <= 1: # if only background 0 exists, or array is empty
+        return np.zeros_like(labeled, dtype=bool)
     largest_label = component_sizes.argmax()
     return labeled == largest_label
 
@@ -95,7 +97,7 @@ def select_closest_component(
         y = bbox_utm.max_y - row * resolution
         distance = np.sqrt((x - dam_x) ** 2 + (y - dam_y) ** 2)
         if distance < min_dist:
-            min_distance = distance
+            min_dist = distance
             selected_label = region.label
     selected_mask = labeled == selected_label
     return selected_mask

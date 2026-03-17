@@ -1,8 +1,34 @@
 from sentinelhub import SentinelHubRequest, DataCollection, MimeType, CRS
 from sentinel.config import get_sh_config
 from sentinel.evalscripts import NDWI_EVALSCRIPT, RGB_EVALSCRIPT
+from constants import DEFAULT_RESOLUTION
+import time
+from functools import wraps
 
-def request_sentinel_data(aoi, time_interval, resolution=10):
+def retry_with_backoff(retries=5, backoff_in_seconds=2):
+    """
+    Retry decorator with exponential backoff.
+    """
+    def wrapper(func):
+        @wraps(func)
+        def wrapped(*args, **kwargs):
+            x = 0
+            while True:
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if x == retries:
+                        print(f"Failed after {retries} retries.")
+                        raise e
+                    sleep_time = (backoff_in_seconds * 2 ** x)
+                    print(f"Request failed: {e}. Retrying in {sleep_time} seconds (Attempt {x+1}/{retries})...")
+                    time.sleep(sleep_time)
+                    x += 1
+        return wrapped
+    return wrapper
+
+@retry_with_backoff()
+def request_sentinel_data(aoi, time_interval, resolution=DEFAULT_RESOLUTION):
 
     config = get_sh_config()
 
@@ -37,7 +63,8 @@ def request_sentinel_data(aoi, time_interval, resolution=10):
 
     return request.get_data()[0]
 
-def request_rgb_data(aoi, time_interval, resolution):
+@retry_with_backoff()
+def request_rgb_data(aoi, time_interval, resolution=DEFAULT_RESOLUTION):
 
     config = get_sh_config()
 
