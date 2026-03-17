@@ -4,10 +4,12 @@ from pipeline.acquisition import get_expansion, acquire_aoi
 from pipeline.raw_data import acquire_satellite_data
 from pipeline.processing import choose_reservoir
 from typing import Any
+from sentinelhub import BBox
 
 def resolution_sensitivity(
         dam : Dam,
         resolution : float,
+        dam_bbox : BBox,
         time_interval : Any,
         step : float = 10,
         sampling_density : int = 5
@@ -24,8 +26,7 @@ def resolution_sensitivity(
     areas_km2 = []
 
     from pipeline.utilities import ensure_utm
-    expansion = get_expansion(dam, time_interval)
-    aoi = acquire_aoi(dam, expansion=expansion)
+    aoi = dam_bbox
     aoi = ensure_utm(aoi)
 
     for reso in resolutions:
