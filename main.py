@@ -6,7 +6,7 @@ import sys
 import time
 from pipeline.acquisition import acquire_aoi, get_expansion
 from pipeline.utilities import adjust_resolution, ensure_utm
-from objects.dam import Dam
+from objects import Dam
 from pipeline.raw_data import acquire_satellite_data
 from pipeline.processing import choose_reservoir
 from pipeline.data_to_area import get_pixel_area

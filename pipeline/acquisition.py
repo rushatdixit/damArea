@@ -6,7 +6,7 @@ from sentinel.aoi import expand_bbox_meters
 from sentinel.request import request_sentinel_data
 from sentinel.ndwi import water_mask
 from sentinelhub import CRS, BBox
-from objects.dam import Dam
+from objects import Dam
 from constants import INITIAL_EXPANSION, BREAKING_EXPANSION, BOUNDARY_PIXELS_THRESHOLD
 
 def acquire_aoi(dam : Dam, expansion : int) -> BBox:

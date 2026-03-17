@@ -15,7 +15,7 @@ import numpy as np
 from typing import Tuple
 from scipy.ndimage import label
 from sentinelhub import CRS, transform_point, BBox
-from objects.dam import Dam
+from objects import Dam
 from constants import MIN_AREA_KM2_SELECTION
 
 def select_reservoir_connected_to_dam(

@@ -2,7 +2,7 @@ import numpy as np
 from sentinelhub import CRS, BBox
 from sentinel.ndwi import compute_ndwi, water_mask
 from sentinel.request import request_rgb_data, request_sentinel_data
-from objects.results import SatelliteData
+from objects import SatelliteData
 
 def acquire_satellite_data(
             expanded_dam_bbox : BBox,

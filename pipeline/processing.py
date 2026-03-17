@@ -2,8 +2,8 @@ import numpy as np
 from sentinelhub import BBox, CRS
 from processing.select_reservoir import select_reservoir_connected_to_dam
 from processing.mask_processing import largest_connected_component
-from objects.results import ReservoirResult
-from objects.dam import Dam
+from objects import ReservoirResult
+from objects import Dam
 from constants import MIN_AREA_KM2_PROCESSING
 
 def choose_reservoir(
