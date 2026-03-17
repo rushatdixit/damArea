@@ -18,7 +18,7 @@ MIN_AREA_KM2_PROCESSING = 0.01
 MIN_AREA_KM2_SELECTION = 0.5
 
 # Initial expansion (in meters) around the dam coordinates for the first Area of Interest check
-INITIAL_EXPANSION = 2000
+INITIAL_EXPANSION = 20000
 
 # The maximum expansion (in meters) to attempt before breaking the expansion loop
 BREAKING_EXPANSION = 20000
