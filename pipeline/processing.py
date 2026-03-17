@@ -4,7 +4,7 @@ from processing.select_reservoir import select_reservoir_connected_to_dam
 from processing.mask_processing import largest_connected_component
 from objects.results import ReservoirResult
 from objects.dam import Dam
-from config import MIN_AREA_KM2_PROCESSING
+from constants import MIN_AREA_KM2_PROCESSING
 
 def choose_reservoir(
         dam_mask : np.ndarray,

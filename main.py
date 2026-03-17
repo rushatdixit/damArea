@@ -11,7 +11,7 @@ from pipeline.raw_data import acquire_satellite_data
 from pipeline.processing import choose_reservoir
 from pipeline.data_to_area import get_pixel_area
 from pipeline.visuals import show_individual_figures, show_pipeline_overview
-from config import DEFAULT_RESOLUTION, WATER_MASK_THRESHOLD, INITIAL_EXPANSION
+from constants import DEFAULT_RESOLUTION, WATER_MASK_THRESHOLD, INITIAL_EXPANSION
 from fetch_dam.get_dam import dam_name_to_coords
 
 #set the constants

@@ -1,7 +1,7 @@
 from sentinelhub import SentinelHubRequest, DataCollection, MimeType, CRS
 from sentinel.config import get_sh_config
 from sentinel.evalscripts import NDWI_EVALSCRIPT, RGB_EVALSCRIPT
-from config import DEFAULT_RESOLUTION
+from constants import DEFAULT_RESOLUTION
 import time
 from functools import wraps
 
