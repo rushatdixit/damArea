@@ -21,3 +21,6 @@ venv/
 
 damArea/tests/
 damArea/fetch_dam/dam_database.json
+tests/test_khadakwasla.py
+/tests
+fetch_dam/dam_database.json
