@@ -19,6 +19,5 @@ venv/
 .vscode/
 .idea/
 
-.tests/
-/tests
-fetch_dam/dam_database.json
+damArea/tests/
+damArea/fetch_dam/dam_database.json
