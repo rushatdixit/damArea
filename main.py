@@ -11,15 +11,15 @@ from pipeline.raw_data import acquire_satellite_data
 from pipeline.processing import choose_reservoir
 from pipeline.data_to_area import get_pixel_area
 from pipeline.visuals import show_individual_figures, show_pipeline_overview
+from config import DEFAULT_RESOLUTION, WATER_MASK_THRESHOLD, INITIAL_EXPANSION
+from fetch_dam.get_dam import dam_name_to_coords
 
 #set the constants
 TIME_INTERVAL = ("2023-01-01", "2023-12-31")
-EXPANSION_METERS = float(input("Expansion : "))
-RESOLUTION = int(input("Set your resolution: "))
 
 def main():
-    resolution = RESOLUTION
-    threshold = 0.2
+    resolution = DEFAULT_RESOLUTION
+    threshold = WATER_MASK_THRESHOLD
     if len(sys.argv) < 2:
         print("Usage: python3 -m main \"Dam Name\"")
         sys.exit(1)
@@ -27,12 +27,16 @@ def main():
     print(f"\nRunning pipeline for: {dam_name}\n")
 
     start = time.time()
-    dam = Dam(name=dam_name)
-    EXPANSION_METERS = get_expansion(dam, TIME_INTERVAL, 2000, resolution=500)
+    
+    # Fetch coordinates first
+    coords = dam_name_to_coords(dam_name)
+    dam = Dam(name=dam_name, latitude=coords.latitude, longitude=coords.longitude)
+    
+    EXPANSION_METERS = get_expansion(dam, TIME_INTERVAL, INITIAL_EXPANSION, resolution=500)
     print(f"{EXPANSION_METERS}")
     expanded_dam_bbox = acquire_aoi(dam, EXPANSION_METERS)
-    assert -90 <= dam.latitude() <= 90
-    assert -180 <= dam.longitude() <= 180
+    assert -90 <= dam.latitude <= 90
+    assert -180 <= dam.longitude <= 180
 
     expanded_dam_bbox = ensure_utm(expanded_dam_bbox)
     resolution = adjust_resolution(expanded_dam_bbox, resolution=resolution)

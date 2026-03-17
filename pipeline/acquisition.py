@@ -7,6 +7,7 @@ from sentinel.request import request_sentinel_data
 from sentinel.ndwi import water_mask
 from sentinelhub import CRS, BBox
 from objects.dam import Dam
+from config import INITIAL_EXPANSION, BREAKING_EXPANSION, BOUNDARY_PIXELS_THRESHOLD
 
 def acquire_aoi(dam : Dam, expansion : int) -> BBox:
     """
@@ -26,10 +27,10 @@ def acquire_aoi(dam : Dam, expansion : int) -> BBox:
 def get_expansion(
         dam : Dam,
         time_interval : Any,       
-        initial_expansion : int = 2000, 
+        initial_expansion : int = INITIAL_EXPANSION, 
         resolution : int = 500, 
-        threshold : int = 10,
-        breaking_expansion : int = 100000
+        threshold : int = BOUNDARY_PIXELS_THRESHOLD,
+        breaking_expansion : int = BREAKING_EXPANSION
         ) -> int:
     """
     Given a dam name, finds the optimal expansion. \n ie. you don't have to guess the expansion anymore.
