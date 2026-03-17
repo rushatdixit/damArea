@@ -1,0 +1,7 @@
+sentinelhub
+numpy
+matplotlib
+requests
+python-dotenv
+scikit-image
+scipy
