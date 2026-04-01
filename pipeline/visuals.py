@@ -33,6 +33,7 @@ def show_pipeline_overview(
     selected_mask: np.ndarray,
     contour_pixels: np.ndarray,
     area_km2: float,
+    uncertainty_km2: float,
 ) -> None:
     """
     Displays the full pipeline progression:
@@ -78,7 +79,7 @@ def show_pipeline_overview(
 
     # Final overlay
     plt.subplot(2, 3, 6)
-    plt.title(f"Final Boundary\nArea: {area_km2:.4f} km²")
+    plt.title(f"Final Area\nArea: {area_km2:.4f} ± {uncertainty_km2:.4f} km²")
     plt.imshow(rgb)
     plt.plot(contour_pixels[:, 1], contour_pixels[:, 0], linewidth=2)
     plt.axis("off")

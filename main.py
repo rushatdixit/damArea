@@ -6,13 +6,14 @@ import sys
 import time
 from pipeline.acquisition import acquire_aoi, get_expansion
 from pipeline.utilities import adjust_resolution, ensure_utm
-from objects import Dam
+from objects import Dam, TimeSeries
 from pipeline.raw_data import acquire_satellite_data
 from pipeline.processing import choose_reservoir, mask_to_bbox
 from pipeline.data_to_area import get_pixel_area
 from pipeline.visuals import show_individual_figures, show_pipeline_overview
 from constants import DEFAULT_RESOLUTION, WATER_MASK_THRESHOLD, INITIAL_EXPANSION
 from fetch_dam.get_dam import dam_name_to_coords
+from uncertainty.visuals import plot_resolution_uncertainty, plot_threshold_uncertainty, plot_timeseries
 
 #set the constants
 TIME_INTERVAL = ("2023-01-01", "2023-12-31")
@@ -106,11 +107,22 @@ def main():
 
     resolution_unc = resolution_sensitivity(
         dam=dam,
-        resolution=60,
+        resolution=30,
         dam_bbox=reservoir_bbox,
         time_interval=TIME_INTERVAL,
-        step=10,
-        sampling_density=2
+        step=5,
+        sampling_density=4
+    )
+
+    from uncertainty.timeseries_analysis import compute_timeseries
+    print(f"\nComputing Area over Time for interval {TIME_INTERVAL}...")
+    timeseries_data = compute_timeseries(
+        dam=dam,
+        resolution=50,
+        dam_bbox=reservoir_bbox,
+        time_interval=TIME_INTERVAL,
+        threshold=threshold,
+        interval_days=30
     )
 
     threshold_range = threshold_unc.range_km2
@@ -131,15 +143,13 @@ def main():
         full_mask=refined_data.mask,
         selected_mask=refined_reservoir.mask[0],
         contour_pixels=refined_reservoir.contour,
-        area_km2=area_km2
+        area_km2=area_km2,
+        uncertainty_km2=total_unc
     )
 
-    show_individual_figures(
-        rgb=refined_data.rgb,
-        ndwi=refined_data.ndwi,
-        full_mask=refined_data.mask,
-        selected_mask=refined_reservoir.mask[0]
-    )
+    plot_threshold_uncertainty(threshold_unc)
+    plot_resolution_uncertainty(resolution_unc)
+    plot_timeseries(timeseries_data, dam_name=dam_name)
 
     print("Pipeline complete.")
 
