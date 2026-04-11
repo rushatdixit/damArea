@@ -15,7 +15,6 @@ from constants import DEFAULT_RESOLUTION, WATER_MASK_THRESHOLD, INITIAL_EXPANSIO
 from fetch_dam.get_dam import dam_name_to_coords
 from uncertainty.visuals import plot_resolution_uncertainty, plot_threshold_uncertainty, plot_timeseries
 
-#set the constants
 TIME_INTERVAL = ("2023-01-01", "2023-12-31")
 
 
@@ -32,7 +31,6 @@ def main():
 
     start = time.time()
     
-    # Fetch coordinates first
     coords = dam_name_to_coords(dam_name)
     dam = Dam(name=dam_name, latitude=coords.latitude, longitude=coords.longitude)
     

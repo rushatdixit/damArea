@@ -45,7 +45,6 @@ def acquire_satellite_data(
     mask_arr = None
     water_pixels = 0
     water_area = 0
-    #conversion to utm
 
     assert expanded_dam_bbox.crs != CRS.WGS84, \
     "acquire_satellite_data requires UTM bbox"
