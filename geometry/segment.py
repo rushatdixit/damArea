@@ -74,7 +74,6 @@ class Segment:
         
         if o1 != o2 and o3 != o4:
             return True
-        #general case
         if o1 == 0 and self._on_segment(A, C, B):
             return True
         if o2 == 0 and self._on_segment(A, D, B):
@@ -83,5 +82,4 @@ class Segment:
             return True
         if o4 == 0 and self._on_segment(C, B, D):
             return True
-        #collinear cases
         return False
