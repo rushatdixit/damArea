@@ -17,11 +17,9 @@ def compute_ndwi(data: List[List[List[float]]]) -> List[List[float]]:
 
     ndwi = (green - nir) / (green + nir + 1e-10)
 
-    # Cloud mask
     cloud_classes = [3, 8, 9, 10, 11]
     cloud_mask = np.isin(scl, cloud_classes)
 
-    # Remove cloudy pixels
     ndwi[cloud_mask] = np.nan
 
     return ndwi.tolist()
