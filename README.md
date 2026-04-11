@@ -106,28 +106,52 @@ Pipeline complete.
 
 The pipeline automatically compiles its analyses and generates visualization graphics for each dam processed. They are dumped to the `outputs/` folder.
 
-Below is the sample generated output set for **Bhakra Nangal** (`outputs/bhakra_nangal/`):
+Below are sample generated output sets for the **Bhakra Nangal Reservoir** and the **Mulshi Dam**.
 
-### Pipeline Overview
-Visualizes the extraction process from Raw RGB all the way to isolated water-body contour capturing.
+### Bhakra Nangal Reservoir (`outputs/bhakra_nangal/`)
+
+**1. Pipeline Overview**
+Visualizes the extraction process from Raw RGB all the way to isolated water-body contour capturing for Bhakra Nangal.
 
 ![Bhakra Nangal Pipeline](outputs/bhakra_nangal/Bhakra_Nangal.png)
 
-### Timeline Analysis
+**2. Timeline Analysis**
 Tracks how the selected reservoir area naturally changes over the specified timescale (e.g. 1 Year) accounting for seasons, drainage, and environment.
 
 ![Timeline Analysis](outputs/bhakra_nangal/Timeline_Analysis.png)
 
-### Uncertainty Quantification
+**3. Uncertainty Quantification**
 We verify the robustness of our calculation by testing it systematically across scaling NDWI pixel thresholds and varying physical resolutions. This supplies our ± margin of error.
 
-**Threshold Sensitivity**
+*Threshold Sensitivity:*
 
 ![Threshold](outputs/bhakra_nangal/Threshold_Sensitivity.png)
 
-**Resolution Sensitivity**
+*Resolution Sensitivity:*
 
 ![Resolution](outputs/bhakra_nangal/Resolution_Sensitivity.png)
+
+### Mulshi Dam (`outputs/mulshi/`)
+
+**1. Pipeline Overview**
+Visualizes the corresponding extraction and reservoir targeting specifically mapped for Mulshi Dam.
+
+![Mulshi Pipeline](outputs/mulshi/Mulshi.png)
+
+**2. Timeline Analysis**
+Tracks how the Mulshi Dam area transitions across the evaluated period.
+
+![Timeline Analysis](outputs/mulshi/Timeline_Analysis.png)
+
+**3. Uncertainty Quantification**
+
+*Threshold Sensitivity:*
+
+![Threshold](outputs/mulshi/Threshold_Sensivity.png)
+
+*Resolution Sensitivity:*
+
+![Resolution](outputs/mulshi/Resolution_Sensitivity.png)
 
 ## Mathematical Models
 
