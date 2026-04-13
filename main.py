@@ -4,16 +4,16 @@ This is the file which runs the project.
 """
 import sys
 import time
-from pipeline.acquisition import acquire_aoi, get_expansion
 from pipeline.utilities import adjust_resolution, ensure_utm
 from objects import Dam, TimeSeries
 from pipeline.raw_data import acquire_satellite_data
 from pipeline.processing import choose_reservoir, mask_to_bbox
 from pipeline.data_to_area import get_pixel_area
 from pipeline.visuals import show_individual_figures, show_pipeline_overview
-from constants import DEFAULT_RESOLUTION, WATER_MASK_THRESHOLD, INITIAL_EXPANSION
+from constants import DEFAULT_RESOLUTION, WATER_MASK_THRESHOLD
 from fetch_dam.get_dam import dam_name_to_coords
 from uncertainty.visuals import plot_resolution_uncertainty, plot_threshold_uncertainty, plot_timeseries
+from sentinelhub import CRS, transform_point, BBox
 
 TIME_INTERVAL = ("2023-01-01", "2023-12-31")
 
@@ -21,7 +21,6 @@ TIME_INTERVAL = ("2023-01-01", "2023-12-31")
 def main():
     resolution = DEFAULT_RESOLUTION
     threshold = WATER_MASK_THRESHOLD
-    expansion = INITIAL_EXPANSION
 
     if len(sys.argv) < 2:
         print("Usage: python3 -m main \"Dam Name\"")
@@ -34,33 +33,35 @@ def main():
     coords = dam_name_to_coords(dam_name)
     dam = Dam(name=dam_name, latitude=coords.latitude, longitude=coords.longitude)
     
-    EXPANSION_METERS = get_expansion(dam, TIME_INTERVAL, INITIAL_EXPANSION, resolution=500)
-    print(f"{EXPANSION_METERS}")
-    expanded_dam_bbox = acquire_aoi(dam, expansion)
-    assert -90 <= dam.latitude <= 90
-    assert -180 <= dam.longitude <= 180
+    # Define exact 50,000m x 50,000m BBox centered on dam
+    utm_crs = CRS.get_utm_from_wgs84(dam.longitude, dam.latitude)
+    dam_x, dam_y = transform_point((dam.longitude, dam.latitude), CRS.WGS84, utm_crs)
 
-    expanded_dam_bbox = ensure_utm(expanded_dam_bbox)
-    resolution = adjust_resolution(expanded_dam_bbox, resolution=resolution)
-    print(f"Adjusted resolution to : {resolution}")
-    data = acquire_satellite_data(
+    expanded_dam_bbox = BBox([dam_x - 25000, dam_y - 25000, dam_x + 25000, dam_y + 25000], crs=utm_crs)
+    coarse_resolution = 100
+
+    print("Initial 50km x 50km bounds selected.")
+    coarse_data = acquire_satellite_data(
         expanded_dam_bbox,
-        resolution=resolution,
+        resolution=coarse_resolution,
         time_interval=TIME_INTERVAL,
         threshold=threshold,
+        wants_rgb=False,
+        wants_ndwi=True,
+        wants_mask=True
         )
 
-    reservoir = choose_reservoir(
-            dam_mask=data.mask,
+    coarse_reservoir = choose_reservoir(
+            dam_mask=coarse_data.mask,
             expanded_dam_bbox=expanded_dam_bbox,
             dam=dam,
-            resolution=resolution,
+            resolution=coarse_resolution,
             )
     
     reservoir_bbox = mask_to_bbox(
-        reservoir.mask[0],
+        coarse_reservoir.mask[0],
         expanded_dam_bbox,
-        resolution=resolution
+        resolution=coarse_resolution
     )
 
     resolution = adjust_resolution(reservoir_bbox, resolution=DEFAULT_RESOLUTION)
@@ -142,7 +143,9 @@ def main():
         selected_mask=refined_reservoir.mask[0],
         contour_pixels=refined_reservoir.contour,
         area_km2=area_km2,
-        uncertainty_km2=total_unc
+        uncertainty_km2=total_unc,
+        coarse_mask=coarse_data.mask,
+        coarse_selected_mask=coarse_reservoir.mask[0]
     )
 
     plot_threshold_uncertainty(threshold_unc)
