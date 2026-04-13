@@ -55,7 +55,7 @@ def select_reservoir_connected_to_dam(
         utm_crs
     )
 
-    min_distance = np.inf
+    min_distance_sq = np.inf
     selected_component_id = None
     pixel_area_m2 = resolution * resolution
     
@@ -79,17 +79,18 @@ def select_reservoir_connected_to_dam(
         component_x = min_x + (xs * resolution)
         component_y = max_y - (ys * resolution)
 
-        # Compute minimum boundary distance vectorized
-        distances = np.sqrt((component_x - dam_x) ** 2 +
-                            (component_y - dam_y) ** 2)
+        # Compute minimum boundary distance squared vectorized
+        distances_sq = (component_x - dam_x) ** 2 + (component_y - dam_y) ** 2
 
-        boundary_distance = np.min(distances)
-        if boundary_distance < min_distance:
-            min_distance = boundary_distance
+        boundary_distance_sq = np.min(distances_sq)
+        if boundary_distance_sq < min_distance_sq:
+            min_distance_sq = boundary_distance_sq
             selected_component_id = component_id
 
     if selected_component_id is None:
         raise ValueError("No valid reservoir component selected.")
+        
+    min_distance = np.sqrt(min_distance_sq)
 
     selected_mask = labeled == selected_component_id
     selected_pixels = np.sum(selected_mask)
