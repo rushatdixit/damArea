@@ -4,7 +4,7 @@ Data structures for representing dams, reservoirs, and uncertainty metrics.
 
 import numpy as np
 from dataclasses import dataclass
-from typing import Optional, Any, List
+from typing import Optional, Any, List, Union
 from sentinelhub import BBox
 
 @dataclass
@@ -54,7 +54,7 @@ class FetchedDamData:
     """
     latitude: float
     longitude: float
-    bbox: BBox | Any
+    bbox: Union[BBox, Any]
 
 @dataclass(frozen=True)
 class SatelliteData:
