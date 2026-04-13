@@ -5,6 +5,7 @@ from pipeline.raw_data import acquire_satellite_data
 from pipeline.processing import choose_reservoir
 from typing import Any
 from sentinelhub import BBox
+from concurrent.futures import ThreadPoolExecutor
 
 def resolution_sensitivity(
         dam : Dam,
@@ -23,18 +24,15 @@ def resolution_sensitivity(
     assert resolution - step*sampling_density >= 10
 
     resolutions = [resolution + step * i for i in range(-sampling_density, sampling_density + 1)]
-    
-    tested_resolutions = []
-    areas_km2 = []
 
     from pipeline.utilities import ensure_utm, adjust_resolution
     aoi = dam_bbox
     aoi = ensure_utm(aoi)
 
-    for reso in resolutions:
+    def process_resolution(reso):
         if adjust_resolution(aoi, resolution=reso) != reso:
             print(f"Skipping {reso}m resolution (exceeds Sentinel API 2500x2500 limit).")
-            continue
+            return None
 
         data = acquire_satellite_data(
             expanded_dam_bbox=aoi,
@@ -54,7 +52,17 @@ def resolution_sensitivity(
             min_area_km2=0.01,
             wants_debugs=False
         )
-        areas_km2.append(water.area_km2) # convert to km2
-        tested_resolutions.append(reso)
+        return (reso, water.area_km2)
+
+    tested_resolutions = []
+    areas_km2 = []
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        results = executor.map(process_resolution, resolutions)
         
+    for res in results:
+        if res is not None:
+            tested_resolutions.append(res[0])
+            areas_km2.append(res[1])
+            
     return ResolutionUncertainty(resolutions=tested_resolutions, areas_km2=areas_km2)

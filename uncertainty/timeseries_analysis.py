@@ -5,6 +5,7 @@ from pipeline.processing import choose_reservoir
 from typing import Any
 from sentinelhub import BBox
 import datetime
+from concurrent.futures import ThreadPoolExecutor
 
 def compute_timeseries(
         dam : Dam,
@@ -21,10 +22,6 @@ def compute_timeseries(
     start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d")
     end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d")
 
-    current_date = start_date
-    times = []
-    areas_km2 = []
-
     from pipeline.utilities import ensure_utm
     aoi = dam_bbox
     aoi = ensure_utm(aoi)
@@ -32,17 +29,24 @@ def compute_timeseries(
     if interval_days <= 0:
         interval_days = 30
 
+    sub_intervals = []
+    current_date = start_date
     while current_date < end_date:
         next_date = current_date + datetime.timedelta(days=interval_days)
         if next_date > end_date:
             next_date = end_date
-            
-        sub_interval = (current_date.strftime("%Y-%m-%d"), next_date.strftime("%Y-%m-%d"))
+        sub_intervals.append((current_date, next_date))
+        if next_date == end_date:
+            break
+        current_date = next_date
 
+    def process_interval(interval_tuple):
+        c_date, n_date = interval_tuple
+        sub_int_str = (c_date.strftime("%Y-%m-%d"), n_date.strftime("%Y-%m-%d"))
         try:
             data = acquire_satellite_data(
                 expanded_dam_bbox=aoi,
-                time_interval=sub_interval,
+                time_interval=sub_int_str,
                 resolution=resolution,
                 threshold=threshold,
                 wants_rgb=False,
@@ -59,15 +63,20 @@ def compute_timeseries(
                 min_area_km2=0.01,
                 wants_debugs=False
             )
-            
-            times.append(current_date)
-            areas_km2.append(water.area_km2)
+            return (c_date, water.area_km2)
         except Exception as e:
-            # Skip this interval if satellite data is fully corrupted or not found
-            pass
-            
-        if next_date == end_date:
-            break
-        current_date = next_date
+            print(f"Skipping interval {sub_int_str} due to Error: {e}")
+            return None
+
+    times = []
+    areas_km2 = []
+    
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        results = executor.map(process_interval, sub_intervals)
+        
+    for res in results:
+        if res is not None:
+            times.append(res[0])
+            areas_km2.append(res[1])
 
     return TimeSeries(times=times, areas_km2=areas_km2)
