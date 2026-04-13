@@ -34,6 +34,8 @@ def show_pipeline_overview(
     contour_pixels: np.ndarray,
     area_km2: float,
     uncertainty_km2: float,
+    coarse_mask: np.ndarray,
+    coarse_selected_mask: np.ndarray,
 ) -> None:
     """
     Displays the full pipeline progression:
@@ -70,11 +72,15 @@ def show_pipeline_overview(
     plt.imshow(selected_mask, cmap="Blues")
     plt.axis("off")
 
-    # Contour only
+    # 50km x 50km Context
     plt.subplot(2, 3, 5)
-    plt.title("Extracted Contour")
-    plt.imshow(selected_mask, cmap="gray")
-    plt.plot(contour_pixels[:, 1], contour_pixels[:, 0], linewidth=1.5)
+    plt.title("50km x 50km Context")
+    plt.imshow(coarse_mask, cmap="Blues", alpha=0.5)
+    
+    # Overlay selected reservoir in distinct color (e.g., Red) to mark it
+    import matplotlib.colors as mcolors
+    cmap_red = mcolors.ListedColormap(['none', 'red'])
+    plt.imshow(coarse_selected_mask, cmap=cmap_red)
     plt.axis("off")
 
     # Final overlay
