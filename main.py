@@ -12,7 +12,7 @@ from pipeline.data_to_area import get_pixel_area
 from pipeline.visuals import show_individual_figures, show_pipeline_overview
 from constants import DEFAULT_RESOLUTION, WATER_MASK_THRESHOLD
 from fetch_dam.get_dam import dam_name_to_coords
-from uncertainty.visuals import plot_resolution_uncertainty, plot_threshold_uncertainty, plot_timeseries
+from uncertainty.visuals import plot_resolution_uncertainty, plot_threshold_uncertainty, plot_timeseries, plot_coarse_uncertainty
 from sentinelhub import CRS, transform_point, BBox
 
 TIME_INTERVAL = ("2023-01-01", "2023-12-31")
@@ -113,6 +113,15 @@ def main():
         sampling_density=4
     )
 
+    from uncertainty.coarse_uncertainty import coarse_resolution_sensitivity
+    print("\nComputing Coarse Resolution Uncertainty...")
+    coarse_unc = coarse_resolution_sensitivity(
+        dam=dam,
+        base_resolution=resolution,
+        time_interval=TIME_INTERVAL,
+        coarse_resolutions=[100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
+    )
+
     from uncertainty.timeseries_analysis import compute_timeseries
     print(f"\nComputing Area over Time for interval {TIME_INTERVAL}...")
     timeseries_data = compute_timeseries(
@@ -151,6 +160,7 @@ def main():
     plot_threshold_uncertainty(threshold_unc)
     plot_resolution_uncertainty(resolution_unc)
     plot_timeseries(timeseries_data, dam_name=dam_name)
+    plot_coarse_uncertainty(coarse_unc)
 
     print("Pipeline complete.")
 

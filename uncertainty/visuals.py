@@ -82,3 +82,35 @@ def plot_timeseries(timeseries, dam_name: str = ""):
 
     plt.tight_layout()
     plt.show()
+
+def plot_coarse_uncertainty(coarse_unc):
+    resolutions = coarse_unc.coarse_resolutions
+    bbox_areas = coarse_unc.bbox_areas_km2
+    res_areas = coarse_unc.reservoir_areas_km2
+    times = coarse_unc.times_taken
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+
+    # BBox Area vs Coarse Resolution
+    axes[0].plot(resolutions, bbox_areas, marker="o")
+    axes[0].set_xlabel("Coarse Resolution (m)")
+    axes[0].set_ylabel("Bounding Box Area (km²)")
+    axes[0].set_title("BBox Area vs Coarse Reso")
+    axes[0].grid(True)
+
+    # Reservoir Area vs Coarse Resolution
+    axes[1].plot(resolutions, res_areas, marker="o", color="orange")
+    axes[1].set_xlabel("Coarse Resolution (m)")
+    axes[1].set_ylabel("Reservoir Area (km²)")
+    axes[1].set_title("Reservoir Area vs Coarse Reso")
+    axes[1].grid(True)
+
+    # Time vs Coarse Resolution
+    axes[2].plot(resolutions, times, marker="o", color="green")
+    axes[2].set_xlabel("Coarse Resolution (m)")
+    axes[2].set_ylabel("Time (seconds)")
+    axes[2].set_title("Calculation Time vs Coarse Reso")
+    axes[2].grid(True)
+
+    plt.tight_layout()
+    plt.show()
