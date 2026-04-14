@@ -175,3 +175,13 @@ class TimeSeries:
         if self.mean_km2 == 0:
             return 0.0
         return 100 * self.range_km2 / self.mean_km2
+
+@dataclass
+class CoarseUncertainty:
+    """
+    Uncertainty metrics calculated across different coarse resolutions for bounding box acquisitions.
+    """
+    coarse_resolutions: List[float]
+    bbox_areas_km2: List[float]
+    reservoir_areas_km2: List[float]
+    times_taken: List[float]
