@@ -1,0 +1,192 @@
+import time
+from typing import Tuple
+from objects import Dam, TimeSeries, AreaEstimationResult, UncertaintyAnalysisResult
+from pipeline.raw_data import acquire_satellite_data
+from pipeline.processing import choose_reservoir, mask_to_bbox
+from pipeline.data_to_area import get_pixel_area
+from pipeline.utilities import adjust_resolution
+from constants import DEFAULT_RESOLUTION, WATER_MASK_THRESHOLD
+from sentinelhub import CRS, transform_point, BBox
+
+def run_area_estimation(
+    dam_name: str, 
+    dam: Dam, 
+    time_interval: Tuple[str, str], 
+    coarse_resolution: float, 
+    threshold: float = WATER_MASK_THRESHOLD
+) -> AreaEstimationResult:
+    """
+    Computes the surface area of a dam reservoir by performing a coarse scale
+    search followed by a refined high-resolution border extraction.
+
+    Args:
+        dam_name (str): The name of the dam.
+        dam (Dam): The Dam object containing coordinates.
+        time_interval (Tuple[str, str]): Start and end dates (YYYY-MM-DD, YYYY-MM-DD).
+        coarse_resolution (float): The resolution in meters for the initial lookup.
+        threshold (float): The NDWI threshold to filter water pixels.
+
+    Returns:
+        AreaEstimationResult: A dataclass containing the estimated area, bounding
+        box, calculated optimal resolution, and the generated raw satellite and
+        reservoir masking data for both coarse and refined scales.
+    """
+    print("Initial 50km x 50km bounds selected.")
+    utm_crs = CRS.get_utm_from_wgs84(dam.longitude, dam.latitude)
+    dam_x, dam_y = transform_point((dam.longitude, dam.latitude), CRS.WGS84, utm_crs)
+
+    expanded_dam_bbox = BBox([dam_x - 25000, dam_y - 25000, dam_x + 25000, dam_y + 25000], crs=utm_crs)
+    
+    coarse_data = acquire_satellite_data(
+        expanded_dam_bbox,
+        resolution=coarse_resolution,
+        time_interval=time_interval,
+        threshold=threshold,
+        wants_rgb=False,
+        wants_ndwi=True,
+        wants_mask=True
+    )
+
+    coarse_reservoir = choose_reservoir(
+        dam_mask=coarse_data.mask,
+        expanded_dam_bbox=expanded_dam_bbox,
+        dam=dam,
+        resolution=coarse_resolution,
+    )
+    
+    reservoir_bbox = mask_to_bbox(
+        coarse_reservoir.mask[0],
+        expanded_dam_bbox,
+        resolution=coarse_resolution
+    )
+
+    resolution = adjust_resolution(reservoir_bbox, resolution=DEFAULT_RESOLUTION)
+    print(f"Optimal resolution for reservoir AOI: {resolution}")
+
+    refined_data = acquire_satellite_data(
+        reservoir_bbox,
+        resolution=resolution,
+        time_interval=time_interval,
+        threshold=threshold,
+    )
+
+    refined_reservoir = choose_reservoir(
+        dam_mask=refined_data.mask,
+        expanded_dam_bbox=reservoir_bbox,
+        dam=dam,
+        resolution=resolution,
+    )
+
+    area_m2 = get_pixel_area(
+        refined_reservoir.mask[0],
+        resolution=resolution
+    )
+
+    area_km2 = area_m2 / 1e6
+    print(f"\nBest Area Estimate: {area_km2:.4f} km²")
+
+    return AreaEstimationResult(
+        area_km2=area_km2, 
+        reservoir_bbox=reservoir_bbox, 
+        resolution=resolution, 
+        refined_data=refined_data, 
+        refined_reservoir=refined_reservoir, 
+        coarse_data=coarse_data, 
+        coarse_reservoir=coarse_reservoir
+    )
+
+def run_uncertainty_analysis(
+    dam: Dam, 
+    reservoir_bbox: BBox, 
+    resolution: float, 
+    time_interval: Tuple[str, str], 
+    threshold: float = WATER_MASK_THRESHOLD
+) -> UncertaintyAnalysisResult:
+    """
+    Executes various sensitivity analyses to calculate algorithmic uncertainty bounds
+    for the estimated reservoir area.
+
+    Args:
+        dam (Dam): The Dam object being analyzed.
+        reservoir_bbox (BBox): The bounding box encapsulating the refined reservoir.
+        resolution (float): The optimal resolution used in the final estimation.
+        time_interval (Tuple[str, str]): Start and end dates.
+        threshold (float): The base NDWI threshold used.
+
+    Returns:
+        UncertaintyAnalysisResult: A dataclass grouping total aggregated uncertainty 
+        along with the raw sensitivity results.
+    """
+    from uncertainty.threshold_uncertainty import threshold_sensitivity
+    from uncertainty.resolution_uncertainty import resolution_sensitivity
+    from uncertainty.coarse_uncertainty import coarse_resolution_sensitivity
+
+    threshold_unc = threshold_sensitivity(
+        dam_bbox=reservoir_bbox,
+        resolution=resolution,
+        time_interval=time_interval,
+        dam=dam,
+        threshold=threshold,
+        epsilon=0.05,
+        sampling_density=10
+    )
+
+    resolution_unc = resolution_sensitivity(
+        dam=dam,
+        resolution=30,
+        dam_bbox=reservoir_bbox,
+        time_interval=time_interval,
+        step=5,
+        sampling_density=4
+    )
+
+    print("\nComputing Coarse Resolution Uncertainty...")
+    coarse_unc = coarse_resolution_sensitivity(
+        dam=dam,
+        base_resolution=resolution,
+        time_interval=time_interval,
+        coarse_resolutions=[100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
+    )
+
+    threshold_range = threshold_unc.range_km2
+    resolution_range = resolution_unc.range_km2
+    total_unc = (threshold_range**2 + resolution_range**2) ** 0.5
+
+    return UncertaintyAnalysisResult(
+        total_unc=total_unc,
+        threshold_unc=threshold_unc,
+        resolution_unc=resolution_unc,
+        coarse_unc=coarse_unc
+    )
+
+def run_timeseries(
+    dam: Dam, 
+    reservoir_bbox: BBox, 
+    time_interval: Tuple[str, str], 
+    threshold: float = WATER_MASK_THRESHOLD
+) -> TimeSeries:
+    """
+    Computes the surface area of the reservoir over intervals inside the provided
+    time span to create a timeseries.
+
+    Args:
+        dam (Dam): The Dam object being measured.
+        reservoir_bbox (BBox): The geographic bounding box for the reservoir.
+        time_interval (Tuple[str, str]): The overall temporal boundary.
+        threshold (float): The NDWI threshold to filter water pixels (default: 0.3).
+
+    Returns:
+        TimeSeries: A Pandas-backed Timeseries object containing dates and areas limits.
+    """
+    from uncertainty.timeseries_analysis import compute_timeseries
+
+    print(f"\nComputing Area over Time for interval {time_interval}...")
+    timeseries_data = compute_timeseries(
+        dam=dam,
+        resolution=50,
+        dam_bbox=reservoir_bbox,
+        time_interval=time_interval,
+        threshold=threshold,
+        interval_days=30
+    )
+    return timeseries_data
