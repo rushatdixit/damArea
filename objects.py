@@ -132,6 +132,7 @@ class ResolutionUncertainty:
     def relative_range_percent(self) -> float:
         return 100 * self.range_km2 / self.mean_km2 
 
+import pandas as pd
 from dataclasses import dataclass
 from typing import List
 from datetime import datetime
@@ -139,32 +140,40 @@ import numpy as np
 
 @dataclass
 class TimeSeries:
-    times: List[datetime]
-    areas_km2: List[float]
+    df: pd.DataFrame
+
+    @property
+    def times(self) -> List[datetime]:
+        return self.df.index.tolist() if not self.df.empty else []
+
+    @property
+    def areas_km2(self) -> List[float]:
+        return self.df['area_km2'].tolist() if not self.df.empty else []
 
     @property
     def start_time(self) -> datetime:
-        return min(self.times)
+        return self.df.index.min()
 
     @property
     def end_time(self) -> datetime:
-        return max(self.times)
+        return self.df.index.max()
 
     @property
     def duration_days(self) -> int:
+        if self.df.empty: return 0
         return (self.end_time - self.start_time).days
 
     @property
     def mean_km2(self) -> float:
-        return float(np.mean(self.areas_km2))
+        return float(self.df['area_km2'].mean()) if not self.df.empty else 0.0
 
     @property
     def min_km2(self) -> float:
-        return float(np.min(self.areas_km2))
+        return float(self.df['area_km2'].min()) if not self.df.empty else 0.0
 
     @property
     def max_km2(self) -> float:
-        return float(np.max(self.areas_km2))
+        return float(self.df['area_km2'].max()) if not self.df.empty else 0.0
 
     @property
     def range_km2(self) -> float:
@@ -185,3 +194,26 @@ class CoarseUncertainty:
     bbox_areas_km2: List[float]
     reservoir_areas_km2: List[float]
     times_taken: List[float]
+
+@dataclass
+class AreaEstimationResult:
+    """
+    Result container for the area estimation pipeline phase.
+    """
+    area_km2: float
+    reservoir_bbox: BBox
+    resolution: float
+    refined_data: SatelliteData
+    refined_reservoir: ReservoirResult
+    coarse_data: SatelliteData
+    coarse_reservoir: ReservoirResult
+
+@dataclass
+class UncertaintyAnalysisResult:
+    """
+    Result container for the uncertainty analysis pipeline phase.
+    """
+    total_unc: float
+    threshold_unc: ThresholdUncertainty
+    resolution_unc: ResolutionUncertainty
+    coarse_unc: CoarseUncertainty
