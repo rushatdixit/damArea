@@ -59,14 +59,14 @@ The project utilizes a robust, modular pipeline:
 To run the pipeline for a specific dam:
 
 ```bash
-python main.py "Dam Name"
+damArea "dam_name"
 ```
 
 ### Example Run
 
 Executing for a major dam like Bhakra Nangal:
 ```bash
-python main.py "Bhakra Nangal"
+damArea "Bhakra Nangal"
 ```
 
 **Terminal Output:**
