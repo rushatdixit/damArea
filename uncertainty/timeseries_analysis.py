@@ -5,6 +5,8 @@ from pipeline.processing import choose_reservoir
 from typing import Any
 from sentinelhub import BBox
 import datetime
+import pandas as pd
+from sentinel.request import NoImageryFoundError
 from concurrent.futures import ThreadPoolExecutor
 
 def compute_timeseries(
@@ -64,8 +66,8 @@ def compute_timeseries(
                 wants_debugs=False
             )
             return (c_date, water.area_km2)
-        except Exception as e:
-            print(f"Skipping interval {sub_int_str} due to Error: {e}")
+        except (NoImageryFoundError, ValueError) as e:
+            print(f"Skipping interval {sub_int_str}: {e}")
             return None
 
     times = []
@@ -79,4 +81,12 @@ def compute_timeseries(
             times.append(res[0])
             areas_km2.append(res[1])
 
-    return TimeSeries(times=times, areas_km2=areas_km2)
+    df = pd.DataFrame({'date': times, 'area_km2': areas_km2})
+    if not df.empty:
+        df.set_index('date', inplace=True)
+        df.sort_index(inplace=True)
+    else:
+        df = pd.DataFrame(columns=['area_km2'])
+        df.index.name = 'date'
+
+    return TimeSeries(df=df)
