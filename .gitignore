@@ -24,3 +24,6 @@ damArea/fetch_dam/dam_database.json
 tests/test_khadakwasla.py
 /tests
 fetch_dam/dam_database.json
+
+# Local Pipeline Caches
+.cache/

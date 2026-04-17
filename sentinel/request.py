@@ -4,6 +4,15 @@ from sentinel.evalscripts import NDWI_EVALSCRIPT, RGB_EVALSCRIPT
 from constants import DEFAULT_RESOLUTION
 import time
 from functools import wraps
+import os
+
+class NoImageryFoundError(Exception):
+    pass
+
+from joblib import Memory
+
+cache_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.cache')
+memory = Memory(cache_dir, verbose=0)
 
 def retry_with_backoff(retries=5, backoff_in_seconds=2):
     """
@@ -27,6 +36,7 @@ def retry_with_backoff(retries=5, backoff_in_seconds=2):
         return wrapped
     return wrapper
 
+@memory.cache
 @retry_with_backoff()
 def request_sentinel_data(aoi, time_interval, resolution=DEFAULT_RESOLUTION):
 
@@ -61,8 +71,12 @@ def request_sentinel_data(aoi, time_interval, resolution=DEFAULT_RESOLUTION):
         config=config,
     )
 
-    return request.get_data()[0]
+    data = request.get_data()
+    if not data:
+        raise NoImageryFoundError(f"No Sentinel data found for interval {time_interval}")
+    return data[0]
 
+@memory.cache
 @retry_with_backoff()
 def request_rgb_data(aoi, time_interval, resolution=DEFAULT_RESOLUTION):
 
@@ -97,4 +111,7 @@ def request_rgb_data(aoi, time_interval, resolution=DEFAULT_RESOLUTION):
         config=config,
     )
 
-    return request.get_data()[0]
+    data = request.get_data()
+    if not data:
+        raise NoImageryFoundError(f"No RGB data found for interval {time_interval}")
+    return data[0]
