@@ -42,5 +42,18 @@ function evaluatePixel(sample) {
 }
 """
 
+SAR_VV_EVALSCRIPT = """
+//VERSION=3
+function setup() {
+  return {
+    input: ["VV"],
+    output: { bands: 1, sampleType: "FLOAT32" }
+  };
+}
 
-
+function evaluatePixel(sample) {
+  // Return backscatter in linear scale (already converted by Sentinel Hub depending on config)
+  // Usually we use log-scaling (dB) or linear, linearly scaled is standard FLOAT32 mapping
+  return [sample.VV];
+}
+"""

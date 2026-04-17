@@ -1,7 +1,8 @@
 import numpy as np
 from sentinelhub import CRS, BBox
 from sentinel.ndwi import compute_ndwi, water_mask
-from sentinel.request import request_rgb_data, request_sentinel_data
+from sentinel.request import request_rgb_data, request_sentinel_data, request_sar_data
+from sentinel.sar import sar_water_mask
 from objects import SatelliteData
 
 def acquire_satellite_data(
@@ -13,7 +14,8 @@ def acquire_satellite_data(
             wants_ndwi : bool = True,
             wants_mask : bool = True,
             wants_area : bool = False,
-            wants_debugs : bool = True
+            wants_debugs : bool = True,
+            use_sar : bool = False
             ) -> SatelliteData:
     """
     Acquires satellite data via sentinel hub.
@@ -39,60 +41,141 @@ def acquire_satellite_data(
     :rtype: tuple
     """
     rgb = None
-    ndwi = None
     ndwi_arr = None
-    mask = None
     mask_arr = None
-    water_pixels = 0
-    water_area = 0
+    water_area = None
 
-    assert expanded_dam_bbox.crs != CRS.WGS84, \
-    "acquire_satellite_data requires UTM bbox"
-    assert resolution > 0, \
-        "Resolution must be positive"
+    assert expanded_dam_bbox.crs != CRS.WGS84, "acquire_satellite_data requires UTM bbox"
+    assert resolution > 0, "Resolution must be positive"
+
+    import os
+    debug_dir = os.environ.get("DAM_DEBUG_DIR")
+    verbose_dir = os.environ.get("DAM_VERBOSE_DIR")
+    is_log = bool(debug_dir or verbose_dir)
     
+    if is_log:
+        import time
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        from pipeline.visuals import normalize_rgb
+        
+        time.sleep(1.5)  # Enforce rate limit backoff
+        if wants_debugs:
+            print("Applying 1.5s Rate Limiter to protect Sentinel Hub API limits.")
+            
+        if not use_sar:
+            wants_rgb = True  # Force RGB fetching to capture diagnostic optical images
+            
+        try:
+            start_str, end_str = time_interval
+            interval_stamp = f"{start_str}_to_{end_str}"
+        except:
+            interval_stamp = str(time_interval).replace('/','-')
+
+    if use_sar:
+        if wants_debugs:
+            print("Fetching SAR Radar Data...")
+        sar_bands = request_sar_data(
+            aoi=expanded_dam_bbox,
+            time_interval=time_interval,
+            resolution=resolution,
+        )
+        if verbose_dir and np.array(sar_bands).size > 0:
+            plt.figure(figsize=(8,8))
+            plt.imshow(normalize_rgb(np.array(sar_bands)), cmap="gray")
+            plt.title(f"SAR VV Backscatter - {interval_stamp}")
+            plt.savefig(os.path.join(verbose_dir, f"SAR_VV_{interval_stamp}.png"))
+            plt.close()
+            
+        if wants_mask or wants_area:
+            sar_threshold = 0.05
+            if wants_debugs:
+                print(f"Applying SAR threshold {sar_threshold} to VV backscatter...")
+            mask_arr = sar_water_mask(sar_bands, sar_threshold)
+
+            if verbose_dir and np.array(mask_arr).size > 0:
+                plt.figure(figsize=(8,8))
+                plt.imshow(mask_arr, cmap="Blues")
+                plt.title(f"SAR Water Mask - {interval_stamp}")
+                plt.savefig(os.path.join(verbose_dir, f"SAR_Mask_{interval_stamp}.png"))
+                plt.close()
+
+            if wants_area:
+                water_pixels = np.sum(mask_arr)
+                water_area = water_pixels * resolution * resolution
+
+        return SatelliteData(
+            rgb=None,
+            ndwi=None,
+            mask=mask_arr,
+            water_area_m2=water_area,
+            resolution=resolution,
+        )
+
     if wants_rgb:
-        print("Fetching RGB Data...")
+        if wants_debugs:
+            print("Fetching RGB Data...")
         rgb = request_rgb_data(
             aoi=expanded_dam_bbox,
             time_interval=time_interval,
             resolution=resolution,
         )
-        if wants_debugs:
-            print(f"RGB received | Shape: {np.array(rgb).shape}")
+        if is_log and rgb is not None:
+            rgb_arr = np.array(rgb)
+            if rgb_arr.size > 0 and rgb_arr.shape[0] > 0 and rgb_arr.shape[1] > 0:
+                plt.figure(figsize=(8,8))
+                plt.imshow(normalize_rgb(rgb_arr))
+                plt.title(f"Optical RGB - {interval_stamp}")
+                if debug_dir:
+                    plt.savefig(os.path.join(debug_dir, f"RGB_{interval_stamp}.png"))
+                if verbose_dir:
+                    plt.savefig(os.path.join(verbose_dir, f"RGB_{interval_stamp}.png"))
+                plt.close()
 
     needs_ndwi = wants_ndwi or wants_mask or wants_area
     if needs_ndwi:
-        print("Getting NDWI bands...")
+        if wants_debugs:
+            print("Getting NDWI bands...")
         ndwi_bands = request_sentinel_data(
             aoi=expanded_dam_bbox,
             time_interval=time_interval,
             resolution=resolution,
         )
-        print("Computing NDWI...")
-        ndwi = compute_ndwi(ndwi_bands)
-        ndwi_arr = np.array(ndwi)
-        if wants_debugs and wants_ndwi:
-            print(f"NDWI range: {np.nanmin(ndwi_arr):.3f} to {np.nanmax(ndwi_arr):.3f}")
+        if wants_debugs:
+            print("Computing NDWI...")
+        ndwi_arr = np.array(compute_ndwi(ndwi_bands))
+        
+        if verbose_dir and ndwi_arr.size > 0 and ndwi_arr.shape[0] > 0:
+            plt.figure(figsize=(8,8))
+            plt.imshow(ndwi_arr, cmap="viridis")
+            plt.title(f"NDWI Computed - {interval_stamp}")
+            plt.savefig(os.path.join(verbose_dir, f"NDWI_{interval_stamp}.png"))
+            plt.close()
 
     if wants_mask or wants_area:
-        print("Applying water threshold to NDWI...")
-        mask = water_mask(ndwi, threshold)
-        mask_arr = np.array(mask)
-
-    if wants_area:
-        water_pixels = np.sum(mask_arr)
-        water_area = water_pixels * resolution * resolution
         if wants_debugs:
-            print(f"Water pixels: {water_pixels}")
+            print("Applying water threshold to NDWI...")
+        mask_arr = np.array(water_mask(ndwi_arr.tolist(), threshold))
+
+        if verbose_dir and mask_arr.size > 0 and mask_arr.shape[0] > 0:
+            plt.figure(figsize=(8,8))
+            plt.imshow(mask_arr, cmap="Blues")
+            plt.title(f"Optical Water Mask - {interval_stamp}")
+            plt.savefig(os.path.join(verbose_dir, f"Optical_Mask_{interval_stamp}.png"))
+            plt.close()
+
+        if wants_area:
+            water_pixels = np.sum(mask_arr)
+            water_area = water_pixels * resolution * resolution
 
     return SatelliteData(
-    rgb=rgb,
-    ndwi=ndwi_arr,
-    mask=mask_arr,
-    water_area_m2=water_area if wants_area else None,
-    resolution=resolution,
-)
+        rgb=rgb,
+        ndwi=ndwi_arr,
+        mask=mask_arr,
+        water_area_m2=water_area,
+        resolution=resolution,
+    )
 
 
 from sentinel.tile_stream import split_bbox_into_tiles

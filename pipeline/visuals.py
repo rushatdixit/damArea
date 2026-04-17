@@ -22,6 +22,9 @@ def normalize_rgb(rgb: np.ndarray) -> np.ndarray:
     rgb = np.asarray(rgb).astype(float)
 
     p2, p98 = np.percentile(rgb, (2, 98))
+    if p98 - p2 == 0:
+        return np.clip(rgb, 0, 1)
+
     rgb = np.clip((rgb - p2) / (p98 - p2), 0, 1)
 
     return rgb
@@ -91,6 +94,9 @@ def show_pipeline_overview(
     plt.axis("off")
 
     plt.tight_layout()
+    import os
+    os.makedirs('outputs', exist_ok=True)
+    plt.savefig('outputs/Pipeline_Overview.png', bbox_inches='tight')
     plt.show()
 
 def show_individual_figures(

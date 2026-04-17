@@ -21,13 +21,63 @@ def main():
     parser.add_argument("dam_name", type=str, help="Name of the dam to process")
     parser.add_argument("--start-date", type=str, default="2023-01-01", help="Start date (YYYY-MM-DD)")
     parser.add_argument("--end-date", type=str, default="2023-12-31", help="End date (YYYY-MM-DD)")
-    parser.add_argument("--coarse-res", type=float, default=100.0, help="Coarse resolution in meters")
+    
+    # Selective Pipeline Arguments
+    parser.add_argument("--area", type=str, choices=['y', 'n'], default='y', help="Run Area Estimation phase (y/n)")
+    parser.add_argument("--unc", type=str, choices=['y', 'n'], default='y', help="Run Uncertainty Analysis phase (y/n)")
+    parser.add_argument("--time", type=str, choices=['y', 'n'], default='y', help="Run Timeseries phase (y/n)")
+    
+    # Advanced Settings
+    parser.add_argument("--sar", type=str, choices=['y', 'n'], default='y', help="Allows automatic Sentinel-1 SAR Cloud Failovers (y/n)")
+    parser.add_argument("--timeseries-step", type=int, default=30, help="Interval size in days for Timeseries scans")
+    parser.add_argument("--resolution", type=int, default=10, help="Optical target resolution in meters")
+    parser.add_argument("--verbose", type=str, choices=['y', 'n'], default='n', help="Enable deep debug logging (y/n)")
+    parser.add_argument("--debug", type=str, choices=['y', 'n'], default='n', help="Export RGB debug images")
+    parser.add_argument("--delete-debug", type=str, choices=['y', 'n'], default='n', help="Delete generated debug directories")
+    
     args = parser.parse_args()
+    
+    import sys, os, shutil
+    if args.delete_debug == 'y':
+        target_dirs = [d for d in ["debug", "deep_debug"] if os.path.exists(d)]
+        if not target_dirs:
+            print("No debug directories found.")
+            sys.exit(0)
+        
+        print("\n[WARNING] The following directories and all their contents will be permanently deleted:")
+        for d in target_dirs:
+            print(f" - {os.path.abspath(d)}")
+        
+        confirmation = input("\nAre you sure you want to proceed? [y/N]: ")
+        if confirmation.lower() in ('y', 'yes'):
+            for d in target_dirs:
+                shutil.rmtree(d)
+                print(f"Deleted {d}/")
+            print("Debug cache cleared.")
+        else:
+            print("Deletion aborted.")
+        sys.exit(0)
 
     dam_name = args.dam_name
     time_interval = (args.start_date, args.end_date)
-    coarse_resolution = args.coarse_res
     threshold = WATER_MASK_THRESHOLD
+    
+    # Settings mapping
+    do_area = args.area == 'y'
+    do_unc = args.unc == 'y'
+    do_time = args.time == 'y'
+    
+    use_sar = args.sar == 'y'
+    resolution = float(args.resolution)
+    interval_days = args.timeseries_step
+    verbose = args.verbose == 'y'
+    
+    if args.debug == 'y':
+        os.environ["DAM_DEBUG_DIR"] = "debug"
+        os.makedirs("debug", exist_ok=True)
+    if args.verbose == 'y':
+        os.environ["DAM_VERBOSE_DIR"] = "deep_debug"
+        os.makedirs("deep_debug", exist_ok=True)
 
     print(f"\nRunning pipeline for: {dam_name}\n")
     start = time.time()
@@ -40,19 +90,36 @@ def main():
     timeseries_data = None
 
     # Phase 1: Area Estimation
-    area_res = run_area_estimation(dam_name, dam, time_interval, coarse_resolution, threshold)
+    if do_area:
+        area_res = run_area_estimation(dam_name, dam, time_interval, 100.0, threshold)
 
     # Phase 2: Uncertainty Analysis
-    if area_res is not None:
-        unc_res = run_uncertainty_analysis(dam, area_res.reservoir_bbox, area_res.resolution, time_interval, threshold)
-
-        print("\n-----------------------------------")
-        print(f"Final Area: {area_res.area_km2:.4f} ± {unc_res.total_unc if unc_res else 0.0:.4f} km²")
-        print("-----------------------------------")
+    if do_unc:
+        if area_res is not None:
+            unc_res = run_uncertainty_analysis(dam, area_res.reservoir_bbox, resolution, time_interval, threshold)
+            print("\n-----------------------------------")
+            print(f"Final Area: {area_res.area_km2:.4f} ± {unc_res.total_unc if unc_res else 0.0:.4f} km²")
+            print("-----------------------------------")
+        else:
+            print("\nSkipping Uncertainty Analysis because Area Estimation was not run.")
 
     # Phase 3: Timeseries
-    if area_res is not None:
-        timeseries_data = run_timeseries(dam, area_res.reservoir_bbox, time_interval, threshold)
+    if do_time:
+        if area_res is not None:
+            start_bbox = area_res.reservoir_bbox
+            expected_area = area_res.area_km2
+        else:
+            from sentinelhub import CRS, transform_point, BBox
+            utm_crs = CRS.get_utm_from_wgs84(dam.longitude, dam.latitude)
+            dam_x, dam_y = transform_point((dam.longitude, dam.latitude), CRS.WGS84, utm_crs)
+            start_bbox = BBox([dam_x - 5000, dam_y - 5000, dam_x + 5000, dam_y + 5000], crs=utm_crs)
+            expected_area = None
+            
+        timeseries_data = run_timeseries(
+            dam, start_bbox, time_interval, threshold, 
+            resolution=resolution, interval_days=interval_days, 
+            allow_sar=use_sar, expected_area_km2=expected_area
+        )
 
     end = time.time()
     print(f"\nTime elapsed: {end - start:.2f} seconds")

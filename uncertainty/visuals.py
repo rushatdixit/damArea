@@ -171,4 +171,7 @@ def show_analysis_overview(unc_res=None, timeseries_data=None, dam_name=""):
         axes[3].axis('off')
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    import os
+    os.makedirs('outputs', exist_ok=True)
+    plt.savefig('outputs/Analysis_Dashboard.png', bbox_inches='tight')
     plt.show()
