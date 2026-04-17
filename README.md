@@ -55,17 +55,29 @@ The project utilizes a robust, modular pipeline:
 
 ## Usage
 
-To run the pipeline for a specific dam:
+To use the global `damArea` command efficiently from any terminal session, you map an alias in your shell configuration to automatically handle the Python execution and paths.
+
+### Global Command Setup (Mac/Linux)
+
+Run the following from the root directory of this repository:
 
 ```bash
-python main.py "Dam Name"
+echo "alias damArea=\"PYTHONPATH=\$(pwd) python3 \$(pwd)/main.py\"" >> ~/.zshrc
+source ~/.zshrc
+```
+*(Note: If you use bash instead of zsh, replace `.zshrc` with `.bashrc`)*
+
+Now you can run the pipeline directly:
+
+```bash
+damArea "Dam Name"
 ```
 
 ### Example Run
 
 Executing for a major dam like Bhakra Nangal:
 ```bash
-python main.py "Bhakra Nangal"
+damArea "Bhakra Nangal"
 ```
 
 **Terminal Output:**
