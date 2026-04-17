@@ -15,7 +15,9 @@ def compute_timeseries(
         dam_bbox : BBox,
         time_interval : Any,
         threshold : float = 0.2,
-        interval_days: int = 30
+        interval_days: int = 30,
+        allow_sar: bool = True,
+        expected_area_km2: float = None
     ) -> TimeSeries:
     """
     Computes area vs time across the given time_interval by stepping through it.
@@ -45,35 +47,67 @@ def compute_timeseries(
     def process_interval(interval_tuple):
         c_date, n_date = interval_tuple
         sub_int_str = (c_date.strftime("%Y-%m-%d"), n_date.strftime("%Y-%m-%d"))
+
+        def attempt_sar():
+            print(f"Falling back to Sentinel-1 SAR for interval {sub_int_str}...")
+            try:
+                sar_data = acquire_satellite_data(
+                    expanded_dam_bbox=aoi, time_interval=sub_int_str, resolution=resolution,
+                    threshold=threshold, wants_rgb=False, wants_ndwi=False,
+                    wants_mask=True, wants_area=False, wants_debugs=False, use_sar=True
+                )
+                sar_water = choose_reservoir(
+                    dam_mask=sar_data.mask, expanded_dam_bbox=aoi, dam=dam,
+                    resolution=resolution, min_area_km2=0.01, wants_debugs=False
+                )
+                return (c_date, sar_water.area_km2)
+            except (NoImageryFoundError, ValueError) as e:
+                print(f"SAR also failed for interval {sub_int_str}: {e}")
+                return None
+
         try:
             data = acquire_satellite_data(
-                expanded_dam_bbox=aoi,
-                time_interval=sub_int_str,
-                resolution=resolution,
-                threshold=threshold,
-                wants_rgb=False,
-                wants_ndwi=False,
-                wants_mask=True,
-                wants_area=False,
-                wants_debugs=False
+                expanded_dam_bbox=aoi, time_interval=sub_int_str, resolution=resolution,
+                threshold=threshold, wants_rgb=False, wants_ndwi=False, wants_mask=True, 
+                wants_area=False, wants_debugs=False, use_sar=False
             )
             water = choose_reservoir(
-                dam_mask=data.mask,
-                expanded_dam_bbox=aoi,
-                dam=dam,
-                resolution=resolution,
-                min_area_km2=0.01,
-                wants_debugs=False
+                dam_mask=data.mask, expanded_dam_bbox=aoi, dam=dam,
+                resolution=resolution, min_area_km2=0.01, wants_debugs=False
             )
-            return (c_date, water.area_km2)
-        except (NoImageryFoundError, ValueError) as e:
-            print(f"Skipping interval {sub_int_str}: {e}")
-            return None
+            computed_area = water.area_km2
+            
+            if expected_area_km2 is not None and computed_area < (expected_area_km2 / 2):
+                if allow_sar:
+                    print(f"Optical area {computed_area:.2f} < threshold ({expected_area_km2/2:.2f}) for {sub_int_str}. Clouds likely obscured reservoir.")
+                    return attempt_sar()
+                else:
+                    return (c_date, computed_area)
+                    
+            return (c_date, computed_area)
+            
+        except NoImageryFoundError as e:
+            if not allow_sar:
+                print(f"Skipping interval {sub_int_str}: {e} (SAR disabled)")
+                return None
+            print(f"Clouds detected for interval {sub_int_str}.")
+            return attempt_sar()
+            
+        except ValueError as e:
+            if not allow_sar:
+                print(f"Skipping interval {sub_int_str}: {e}")
+                return None
+            print(f"Optical extraction failed for {sub_int_str}: {e}")
+            return attempt_sar()
 
     times = []
     areas_km2 = []
     
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    import os
+    is_debug = os.environ.get("DAM_DEBUG_DIR") or os.environ.get("DAM_VERBOSE_DIR")
+    workers = 1 if is_debug else 5
+    
+    with ThreadPoolExecutor(max_workers=workers) as executor:
         results = executor.map(process_interval, sub_intervals)
         
     for res in results:

@@ -1,6 +1,6 @@
 from sentinelhub import SentinelHubRequest, DataCollection, MimeType, CRS
 from sentinel.config import get_sh_config
-from sentinel.evalscripts import NDWI_EVALSCRIPT, RGB_EVALSCRIPT
+from sentinel.evalscripts import NDWI_EVALSCRIPT, RGB_EVALSCRIPT, SAR_VV_EVALSCRIPT
 from constants import DEFAULT_RESOLUTION
 import time
 from functools import wraps
@@ -26,6 +26,8 @@ def retry_with_backoff(retries=5, backoff_in_seconds=2):
                 try:
                     return func(*args, **kwargs)
                 except Exception as e:
+                    if isinstance(e, NoImageryFoundError):
+                        raise e
                     if x == retries:
                         print(f"Failed after {retries} retries.")
                         raise e
@@ -72,13 +74,14 @@ def request_sentinel_data(aoi, time_interval, resolution=DEFAULT_RESOLUTION):
     )
 
     data = request.get_data()
-    if not data:
+    import numpy as np
+    if not data or np.all(data[0] == 0):
         raise NoImageryFoundError(f"No Sentinel data found for interval {time_interval}")
     return data[0]
 
 @memory.cache
 @retry_with_backoff()
-def request_rgb_data(aoi, time_interval, resolution=DEFAULT_RESOLUTION):
+def request_rgb_data(aoi, time_interval, resolution=DEFAULT_RESOLUTION, maxcc=0.2):
 
     config = get_sh_config()
 
@@ -100,7 +103,7 @@ def request_rgb_data(aoi, time_interval, resolution=DEFAULT_RESOLUTION):
             SentinelHubRequest.input_data(
                 data_collection=DataCollection.SENTINEL2_L2A,
                 time_interval=time_interval,
-                maxcc=0.2,
+                maxcc=maxcc,
             )
         ],
         responses=[
@@ -112,6 +115,48 @@ def request_rgb_data(aoi, time_interval, resolution=DEFAULT_RESOLUTION):
     )
 
     data = request.get_data()
-    if not data:
+    import numpy as np
+    if not data or np.all(data[0] == 0):
         raise NoImageryFoundError(f"No RGB data found for interval {time_interval}")
+    return data[0]
+
+@memory.cache
+@retry_with_backoff()
+def request_sar_data(aoi, time_interval, resolution=DEFAULT_RESOLUTION):
+
+    config = get_sh_config()
+
+    if aoi.crs == CRS.WGS84:
+
+        min_lon, min_lat, max_lon, max_lat = aoi
+        center_lon = (min_lon + max_lon) / 2
+        center_lat = (min_lat + max_lat) / 2
+
+        utm_crs = CRS.get_utm_from_wgs84(center_lon, center_lat)
+        bbox_utm = aoi.transform(utm_crs)
+
+    else:
+        bbox_utm = aoi
+
+    # Sentinel-1 GRD doesn't suffer from clouds, so no 'maxcc' filter!
+    request = SentinelHubRequest(
+        evalscript=SAR_VV_EVALSCRIPT,
+        input_data=[
+            SentinelHubRequest.input_data(
+                data_collection=DataCollection.SENTINEL1_IW,
+                time_interval=time_interval,
+            )
+        ],
+        responses=[
+            SentinelHubRequest.output_response("default", MimeType.TIFF)
+        ],
+        bbox=bbox_utm,
+        resolution=(resolution, resolution),
+        config=config,
+    )
+
+    data = request.get_data()
+    import numpy as np
+    if not data or np.all(data[0] == 0):
+        raise NoImageryFoundError(f"No SAR data found for interval {time_interval}")
     return data[0]

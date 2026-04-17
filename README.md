@@ -1,4 +1,4 @@
-# Dam Area Measurement System
+# damArea v2.0
 
 Geospatial measurement pipeline for reservoir perimeter, surface area, and timescale tracking using Sentinel-2 satellite imagery.
 
@@ -15,6 +15,7 @@ The system performs:
 - Connected reservoir selection ensuring we analyze the water body physically attached to the queried dam
 - Adaptive bounding box expansion and resolution clamping (adhering to Sentinel-Hub API limits)
 - Error margin estimations based on spatial and index resolutions
+- Autonomous Cloud-Failovers (Radar + VV Thresholding)
 
 ## Architecture
 
@@ -71,6 +72,7 @@ Now you can run the pipeline directly:
 
 ```bash
 damArea "Dam Name"
+damArea "dam_name"
 ```
 
 ### Example Run
@@ -114,56 +116,37 @@ Time elapsed: 148.32 seconds
 Pipeline complete.
 ```
 
-## Visualizations & Outputs
+## Advanced Execution (CLI)
 
-The pipeline automatically compiles its analyses and generates visualization graphics for each dam processed. They are dumped to the `outputs/` folder.
+You can directly control pipeline logic via precise modular flags using the global `damArea` alias:
 
-Below are sample generated output sets for the **Bhakra Nangal Reservoir** and the **Mulshi Dam**.
+```bash
+damArea "Khadakwasla Dam" --start-date 2023-01-01 --end-date 2023-12-31 --timeseries-step 30 --verbose y
+```
 
-### Bhakra Nangal Reservoir (`outputs/bhakra_nangal/`)
+### CLI Arguments
+- `--area {y,n}`: Estimate Initial Reservoir Baseline Area.
+- `--unc {y,n}`: Process and calculate Coarse, Threshold, and Resolution boundary uncertainties.
+- `--time {y,n}`: Scans chronological intervals and performs timeline analysis.
+- `--sar {y,n}`: Utilize Sentinel-1 cloud-piercing Radar as an automatic fallback on fully clouded optical intervals.
+- `--verbose {y,n}`: Dump matrix arrays down into `./deep_debug` for manual validation!
+- `--delete-debug y`: Safely obliterate any previously accumulated image plot caches.
 
-**1. Pipeline Overview**
-Visualizes the extraction process from Raw RGB all the way to isolated water-body contour capturing for Bhakra Nangal.
+## Visualizations & Sample Outputs
 
-![Bhakra Nangal Pipeline](outputs/bhakra_nangal/Bhakra_Nangal.png)
+The pipeline automatically compiles its analyses and generates visualization graphics for each dam processed. They are dumped to the `outputs/` folder. Below are our exactly three primary diagnostic snapshots:
 
-**2. Timeline Analysis**
-Tracks how the selected reservoir area naturally changes over the specified timescale (e.g. 1 Year) accounting for seasons, drainage, and environment.
+### 1. Optical Pipeline Diagnostics
+Visualizes the extraction process from Raw RGB, NDWI bounding, up to final isolated water-body contour capturing.
+![Pipeline Diagnostics](file:///Users/merucoding/damArea/outputs/Pipeline_Overview.png)
 
-![Timeline Analysis](outputs/bhakra_nangal/Timeline_Analysis.png)
+### 2. Autonomous Cloud Fallovers via Sentinel-1 SAR
+Tracks times the Sentinel-1 SAR triggers when optical satellites are blinded by extreme weather, rendering the literal backscatter of physical water matrices.
+![SAR VV Backscatter Filtering](file:///Users/merucoding/damArea/outputs/SAR_VV_Example.png)
 
-**3. Uncertainty Quantification**
-We verify the robustness of our calculation by testing it systematically across scaling NDWI pixel thresholds and varying physical resolutions. This supplies our ± margin of error.
-
-*Threshold Sensitivity:*
-
-![Threshold](outputs/bhakra_nangal/Threshold_Sensitivity.png)
-
-*Resolution Sensitivity:*
-
-![Resolution](outputs/bhakra_nangal/Resolution_Sensitivity.png)
-
-### Mulshi Dam (`outputs/mulshi/`)
-
-**1. Pipeline Overview**
-Visualizes the corresponding extraction and reservoir targeting specifically mapped for Mulshi Dam.
-
-![Mulshi Pipeline](outputs/mulshi/Mulshi.png)
-
-**2. Timeline Analysis**
-Tracks how the Mulshi Dam area transitions across the evaluated period.
-
-![Timeline Analysis](outputs/mulshi/Timeline_Analysis.png)
-
-**3. Uncertainty Quantification**
-
-*Threshold Sensitivity:*
-
-![Threshold](outputs/mulshi/Threshold_Sensivity.png)
-
-*Resolution Sensitivity:*
-
-![Resolution](outputs/mulshi/Resolution_Sensitivity.png)
+### 3. Timeseries Uncertainty Dashboard
+Plots systematic evaluation charts measuring scale robustness against varying NDWI thresholds and pixel physical scales alongside chronological tracking.
+![Analysis Dashboard](file:///Users/merucoding/damArea/outputs/Analysis_Dashboard.png)
 
 ## Mathematical Models
 
@@ -186,8 +169,18 @@ To derive the final operational margin of error, the system isolates the sensiti
 
 $$ U_{total} = \sqrt{(U_t)^2 + (U_r)^2} $$
 
-## Roadmap
+## SAR Architecture and Radar Backscatter Mechanics
 
-- [ ] Volume estimation via DEM integration
-- [ ] Smarter acquisition strategy to deal with continuous overcast weather
-- [ ] Adaptive tiling improvements for extremely large reservoir tracking
+**What is SAR (Synthetic Aperture Radar)?**
+Sentinel-2 optical satellites cannot pierce heavy cloud cover (e.g., during monsoon seasons), leaving massive timeline data gaps. To overcome this, the pipeline autonomously falls back on **Sentinel-1 SAR** (Synthetic Aperture Radar). SAR emits its own active microwave pulses (C-band) towards the Earth's surface and records the returning echoes (backscatter). Because microwave frequencies operate at much longer wavelengths than visible light, they penetrate clouds, rain, and fog with 100% visibility.
+
+**The Mathematics of SAR Water Extraction:**
+Water extraction using SAR operates on the physics of **Specular Reflection**. 
+1. When radar pulses hit a flat surface (like a calm reservoir), the energy bounces *away* from the satellite in a V-angle, resulting in effectively zero returning energy (an exceedingly dark pixel or a phenomenally low backscatter coefficient).
+2. Conversely, rough terrain (forests, dams, buildings) scatters the pulse in all directions (**Diffuse Scattering**), returning high backscatter to the sensor (resulting in phenomenally bright pixels).
+
+**Our Specific Implementation**:
+The pipeline requests the **VV Polarization** (Vertical Send, Vertical Receive) sequence from `.SENTINEL1_IW` (Interferometric Wide Swath) GRD collections. The raw amplitude signal arrays arrive with extreme exponential variance.
+
+1. **Backscatter Thresholding:** By evaluating the coefficient histogram empirically, we isolate everything underneath `SAR_THRESHOLD = 0.05`. Any physical pixel reflecting less than `0.05` intensity energy is computationally verified as fluid water. In extreme noise cases, `normalize_rgb()` percentile bounds stretching ensures outlier pixels don't artificially crush dynamic range!
+2. **Connectivity Mapping:** The identical connected-components isolation logic applied to optical NDWI works simultaneously against the SAR logic. Since radar noise is exceedingly prone to speckling (salt and pepper static backscatter), our bounding constraint strictly selects the largest single coalesced body connected near the geographical OpenStreetMap anchor ensuring puddles and static noise don't corrupt metric tracking.
