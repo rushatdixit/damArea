@@ -5,6 +5,10 @@ from constants import DEFAULT_RESOLUTION
 import time
 from functools import wraps
 import os
+
+class NoImageryFoundError(Exception):
+    pass
+
 from joblib import Memory
 
 cache_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.cache')
@@ -67,7 +71,10 @@ def request_sentinel_data(aoi, time_interval, resolution=DEFAULT_RESOLUTION):
         config=config,
     )
 
-    return request.get_data()[0]
+    data = request.get_data()
+    if not data:
+        raise NoImageryFoundError(f"No Sentinel data found for interval {time_interval}")
+    return data[0]
 
 @memory.cache
 @retry_with_backoff()
@@ -104,4 +111,7 @@ def request_rgb_data(aoi, time_interval, resolution=DEFAULT_RESOLUTION):
         config=config,
     )
 
-    return request.get_data()[0]
+    data = request.get_data()
+    if not data:
+        raise NoImageryFoundError(f"No RGB data found for interval {time_interval}")
+    return data[0]
