@@ -163,30 +163,27 @@ def run_timeseries(
     dam: Dam, 
     reservoir_bbox: BBox, 
     time_interval: Tuple[str, str], 
-    threshold: float = WATER_MASK_THRESHOLD
+    threshold: float = WATER_MASK_THRESHOLD,
+    resolution: float = 10,
+    interval_days: int = 30,
+    allow_sar: bool = True,
+    expected_area_km2: float = None
 ) -> TimeSeries:
     """
     Computes the surface area of the reservoir over intervals inside the provided
     time span to create a timeseries.
-
-    Args:
-        dam (Dam): The Dam object being measured.
-        reservoir_bbox (BBox): The geographic bounding box for the reservoir.
-        time_interval (Tuple[str, str]): The overall temporal boundary.
-        threshold (float): The NDWI threshold to filter water pixels (default: 0.3).
-
-    Returns:
-        TimeSeries: A Pandas-backed Timeseries object containing dates and areas limits.
     """
     from uncertainty.timeseries_analysis import compute_timeseries
 
     print(f"\nComputing Area over Time for interval {time_interval}...")
     timeseries_data = compute_timeseries(
         dam=dam,
-        resolution=50,
+        resolution=resolution,
         dam_bbox=reservoir_bbox,
         time_interval=time_interval,
         threshold=threshold,
-        interval_days=30
+        interval_days=interval_days,
+        allow_sar=allow_sar,
+        expected_area_km2=expected_area_km2
     )
     return timeseries_data
