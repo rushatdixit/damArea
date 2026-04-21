@@ -187,3 +187,93 @@ def run_timeseries(
         expected_area_km2=expected_area_km2
     )
     return timeseries_data
+
+def run_extrema_analysis(
+    dam: Dam,
+    reservoir_bbox: BBox,
+    timeseries_data: TimeSeries,
+    resolution: float = 10,
+    threshold: float = WATER_MASK_THRESHOLD,
+):
+    """
+    Fetches full optical and SAR diagnostic data for the global min and max
+    area dates identified by the timeseries analysis.
+    Returns a tuple of (min_extrema, max_extrema) ExtremaResult objects.
+    """
+    from objects import ExtremaResult
+    from sentinel.request import request_rgb_data, request_sar_data
+    from sentinel.ndwi import compute_ndwi, water_mask
+    from sentinel.sar import sar_water_mask
+    from sentinel.request import request_sentinel_data
+    import numpy as np
+
+    def fetch_extrema_for_interval(date_str):
+        start_str, end_str = date_str.split(",")
+        interval = (start_str, end_str)
+        print(f"\n--- Fetching Extrema Context for {interval} ---")
+
+        rgb = None
+        ndwi = None
+        opt_mask = None
+        opt_sel = None
+        sar_raw = None
+        sar_sel = None
+
+        try:
+            rgb = request_rgb_data(aoi=reservoir_bbox, time_interval=interval, resolution=resolution, maxcc=1.0)
+        except Exception as e:
+            print(f"  RGB fetch failed: {e}")
+
+        try:
+            ndwi_bands = request_sentinel_data(aoi=reservoir_bbox, time_interval=interval, resolution=resolution)
+            ndwi = np.array(compute_ndwi(ndwi_bands))
+            opt_mask = np.array(water_mask(ndwi.tolist(), threshold))
+
+            from scipy.ndimage import label as scipy_label
+            labeled, num = scipy_label(opt_mask)
+            if num > 0:
+                sizes = np.bincount(labeled.ravel())
+                sizes[0] = 0
+                opt_sel = (labeled == sizes.argmax()).astype(int)
+            else:
+                opt_sel = opt_mask
+        except Exception as e:
+            print(f"  Optical processing failed: {e}")
+
+        try:
+            sar_raw = request_sar_data(aoi=reservoir_bbox, time_interval=interval, resolution=resolution)
+            sar_mask = sar_water_mask(sar_raw)
+
+            from scipy.ndimage import label as scipy_label
+            labeled, num = scipy_label(sar_mask)
+            if num > 0:
+                sizes = np.bincount(labeled.ravel())
+                sizes[0] = 0
+                sar_sel = (labeled == sizes.argmax()).astype(int)
+            else:
+                sar_sel = sar_mask.astype(int)
+        except Exception as e:
+            print(f"  SAR processing failed: {e}")
+
+        return ExtremaResult(
+            date_str=start_str,
+            rgb=rgb,
+            ndwi=ndwi,
+            opt_mask=opt_mask,
+            opt_sel=opt_sel,
+            sar=sar_raw,
+            sar_sel=sar_sel,
+        )
+
+    min_extrema = None
+    max_extrema = None
+
+    if timeseries_data.min_date_str:
+        print("\nProcessing Global MINIMUM area date...")
+        min_extrema = fetch_extrema_for_interval(timeseries_data.min_date_str)
+
+    if timeseries_data.max_date_str:
+        print("\nProcessing Global MAXIMUM area date...")
+        max_extrema = fetch_extrema_for_interval(timeseries_data.max_date_str)
+
+    return min_extrema, max_extrema
