@@ -1,13 +1,22 @@
+"""
+NDWI computation and water mask generation from Sentinel-2 bands.
+"""
+
 import numpy as np
 from typing import List
 
+
 def compute_ndwi(data: List[List[List[float]]]) -> List[List[float]]:
     """
-    data: 3D list -> [row][col][band]
-          band 0 = Green (B03)
-          band 1 = NIR (B08)
+    Computes the Normalized Difference Water Index from Sentinel-2 bands.
 
-    returns: 2D list of NDWI values
+    Uses Green (B03) and NIR (B08) bands. Cloud-contaminated pixels identified
+    by the Scene Classification Layer (SCL) are masked to NaN.
+
+    :param data: 3D list [row][col][band] where band 0=Green, band 1=NIR, band 2=SCL.
+    :type data: List[List[List[float]]]
+    :return: 2D list of NDWI values in range [-1, 1], with NaN for cloud pixels.
+    :rtype: List[List[float]]
     """
     arr = np.array(data, dtype=float)
 
@@ -19,7 +28,6 @@ def compute_ndwi(data: List[List[List[float]]]) -> List[List[float]]:
 
     cloud_classes = [3, 8, 9, 10, 11]
     cloud_mask = np.isin(scl, cloud_classes)
-
     ndwi[cloud_mask] = np.nan
 
     return ndwi.tolist()
@@ -27,10 +35,15 @@ def compute_ndwi(data: List[List[List[float]]]) -> List[List[float]]:
 
 def water_mask(ndwi: List[List[float]], threshold: float = 0.2) -> List[List[bool]]:
     """
-    ndwi: 2D list
-    returns: 2D list of booleans
-    """
+    Generates a binary water mask by thresholding NDWI values.
 
+    :param ndwi: 2D list of NDWI values.
+    :type ndwi: List[List[float]]
+    :param threshold: NDWI value above which a pixel is classified as water.
+    :type threshold: float
+    :return: 2D boolean mask where True indicates water.
+    :rtype: List[List[bool]]
+    """
     arr = np.array(ndwi, dtype=float)
     mask = (arr > threshold) & (~np.isnan(arr))
 

@@ -1,7 +1,20 @@
-from sentinelhub import CRS, BBox
+"""
+Utility functions for coordinate transformations and API constraint checks.
+"""
+
 import numpy as np
+from sentinelhub import CRS, BBox
+
 
 def ensure_utm(bbox: BBox) -> BBox:
+    """
+    Ensures a bounding box is in UTM projection, transforming from WGS84 if needed.
+
+    :param bbox: Input bounding box in any CRS.
+    :type bbox: BBox
+    :return: Bounding box in UTM.
+    :rtype: BBox
+    """
     assert isinstance(bbox, BBox)
     if bbox.crs == CRS.WGS84:
         center_lon = (bbox.min_x + bbox.max_x) / 2
@@ -10,7 +23,23 @@ def ensure_utm(bbox: BBox) -> BBox:
         return bbox.transform(utm_crs)
     return bbox
 
+
 def adjust_resolution(bbox: BBox, resolution: float, max_pixels: int = 2500) -> float:
+    """
+    Adjusts resolution if the resulting image dimensions would exceed API limits.
+
+    If the bounding box divided by the resolution produces more than ``max_pixels``
+    pixels along any axis, the resolution is increased to stay within the limit.
+
+    :param bbox: Bounding box in UTM (meters).
+    :type bbox: BBox
+    :param resolution: Desired pixel resolution in meters.
+    :type resolution: float
+    :param max_pixels: Maximum allowed pixels per axis (Sentinel Hub limit).
+    :type max_pixels: int
+    :return: Safe resolution that stays within pixel limits.
+    :rtype: float
+    """
     assert resolution > 0
     assert max_pixels > 0
     width_m = bbox.max_x - bbox.min_x
@@ -18,6 +47,6 @@ def adjust_resolution(bbox: BBox, resolution: float, max_pixels: int = 2500) -> 
     max_dimension_m = max(width_m, height_m)
 
     if max_dimension_m / resolution > max_pixels:
-        resolution = int(np.ceil(max_dimension_m / max_pixels))
+        resolution = float(int(np.ceil(max_dimension_m / max_pixels)))
 
     return resolution

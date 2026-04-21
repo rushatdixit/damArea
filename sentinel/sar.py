@@ -1,20 +1,32 @@
+"""
+SAR water mask extraction from Sentinel-1 VV backscatter.
+"""
+
 import numpy as np
-from typing import List
 from scipy.ndimage import median_filter
+from constants import SAR_THRESHOLD, SAR_SPECKLE_KERNEL
 
-def sar_water_mask(sar_data: np.ndarray, threshold: float = 0.09, speckle_kernel: int = 5) -> np.ndarray:
+
+def sar_water_mask(
+    sar_data: np.ndarray,
+    threshold: float = SAR_THRESHOLD,
+    speckle_kernel: int = SAR_SPECKLE_KERNEL,
+) -> np.ndarray:
     """
-    Creates a water mask from Sentinel-1 SAR VV backscatter.
-    Water has very low backscatter (smooth surface reflects radar away).
-    Therefore, water pixels are those BELOW the threshold.
+    Creates a binary water mask from Sentinel-1 SAR VV backscatter.
 
-    Applies a median filter first to suppress SAR speckle noise,
-    which otherwise fragments water bodies into disconnected components.
-    
-    :param sar_data: 2D or 3D numpy array of VV backscatter values.
-    :param threshold: Linear backscatter threshold (e.g. 0.09).
+    Applies a median filter to suppress speckle noise, then thresholds
+    the smoothed backscatter. Water surfaces produce specular reflection
+    resulting in very low return signal (dark pixels).
+
+    :param sar_data: 2D or 3D array of VV backscatter values (linear scale).
+    :type sar_data: np.ndarray
+    :param threshold: Backscatter threshold below which pixels are classified as water.
+    :type threshold: float
     :param speckle_kernel: Size of the median filter kernel for speckle suppression.
+    :type speckle_kernel: int
     :return: 2D boolean mask where True indicates water.
+    :rtype: np.ndarray
     """
     arr = np.array(sar_data, dtype=float)
     if arr.ndim == 3:
@@ -25,4 +37,3 @@ def sar_water_mask(sar_data: np.ndarray, threshold: float = 0.09, speckle_kernel
     mask = (arr < threshold) & (~np.isnan(arr)) & (arr > 0)
 
     return mask
-

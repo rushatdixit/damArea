@@ -1,50 +1,84 @@
+"""
+Uncertainty and timeseries visualization module.
+
+Provides individual plot functions and dashboard composites for
+threshold sensitivity, resolution sensitivity, timeseries, and extrema.
+"""
+
+import os
+import calendar
+
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-import numpy as np
+from typing import Optional
 
-def plot_threshold_uncertainty(threshold_unc):
-    thresholds = threshold_unc.thresholds
-    areas = threshold_unc.areas_km2
+from objects import (
+    ThresholdUncertainty,
+    ResolutionUncertainty,
+    CoarseUncertainty,
+    TimeSeries,
+    UncertaintyAnalysisResult,
+    ExtremaResult,
+)
 
-    plt.figure(figsize=(6,4))
 
-    plt.plot(thresholds, areas, marker="o")
+def plot_threshold_uncertainty(threshold_unc: ThresholdUncertainty) -> None:
+    """
+    Plots threshold sensitivity as area vs NDWI threshold.
+
+    :param threshold_unc: Threshold uncertainty data.
+    :type threshold_unc: ThresholdUncertainty
+    """
+    plt.figure(figsize=(6, 4))
+    plt.plot(threshold_unc.thresholds, threshold_unc.areas_km2, marker="o")
     plt.axhline(threshold_unc.mean_km2, linestyle="--")
     plt.xlabel("NDWI Threshold")
     plt.ylabel("Area (km²)")
     plt.title("Threshold Sensitivity")
     plt.grid(True)
-
     plt.tight_layout()
     plt.show()
 
-def plot_resolution_uncertainty(resolution_unc):
-    resolutions = resolution_unc.resolutions
-    areas = resolution_unc.areas_km2
 
-    plt.figure(figsize=(6,4))
+def plot_resolution_uncertainty(resolution_unc: ResolutionUncertainty) -> None:
+    """
+    Plots resolution sensitivity as area vs spatial resolution.
 
-    plt.plot(resolutions, areas, marker="o")
+    :param resolution_unc: Resolution uncertainty data.
+    :type resolution_unc: ResolutionUncertainty
+    """
+    plt.figure(figsize=(6, 4))
+    plt.plot(resolution_unc.resolutions, resolution_unc.areas_km2, marker="o")
     plt.axhline(resolution_unc.mean_km2, linestyle="--")
     plt.xlabel("Resolution (m)")
     plt.ylabel("Area (km²)")
     plt.title("Resolution Sensitivity")
     plt.grid(True)
-
     plt.tight_layout()
     plt.show()
 
-def plot_uncertainties(threshold_unc, resolution_unc):
-    fig, axes = plt.subplots(1,2, figsize=(12,4))
 
-    # Threshold
+def plot_uncertainties(
+    threshold_unc: ThresholdUncertainty,
+    resolution_unc: ResolutionUncertainty,
+) -> None:
+    """
+    Plots threshold and resolution sensitivity side by side.
+
+    :param threshold_unc: Threshold uncertainty data.
+    :type threshold_unc: ThresholdUncertainty
+    :param resolution_unc: Resolution uncertainty data.
+    :type resolution_unc: ResolutionUncertainty
+    """
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
     axes[0].plot(threshold_unc.thresholds, threshold_unc.areas_km2, marker="o")
     axes[0].set_xlabel("NDWI Threshold")
     axes[0].set_ylabel("Area (km²)")
     axes[0].set_title("Threshold Sensitivity")
     axes[0].grid(True)
 
-    # Resolution
     axes[1].plot(resolution_unc.resolutions, resolution_unc.areas_km2, marker="o")
     axes[1].set_xlabel("Resolution (m)")
     axes[1].set_ylabel("Area (km²)")
@@ -54,7 +88,16 @@ def plot_uncertainties(threshold_unc, resolution_unc):
     plt.tight_layout()
     plt.show()
 
-def plot_timeseries(timeseries, dam_name: str = ""):
+
+def plot_timeseries(timeseries: TimeSeries, dam_name: str = "") -> None:
+    """
+    Plots reservoir area over time as a line chart.
+
+    :param timeseries: Timeseries data.
+    :type timeseries: TimeSeries
+    :param dam_name: Dam name for the title.
+    :type dam_name: str
+    """
     times = timeseries.times
     areas = timeseries.areas_km2
 
@@ -62,15 +105,14 @@ def plot_timeseries(timeseries, dam_name: str = ""):
         print("No timeseries data to plot.")
         return
 
-    plt.figure(figsize=(8,4))
-
+    plt.figure(figsize=(8, 4))
     plt.plot(times, areas, marker="o", linestyle="-", color="b")
     if timeseries.mean_km2 > 0:
         plt.axhline(timeseries.mean_km2, linestyle="--", color="r", label="Mean Area")
 
     plt.xlabel("Date")
     plt.ylabel("Area (km²)")
-    title = f"Area vs Time"
+    title = "Area vs Time"
     if dam_name:
         title += f" for {dam_name}"
     plt.title(title)
@@ -79,28 +121,43 @@ def plot_timeseries(timeseries, dam_name: str = ""):
         plt.legend()
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
     plt.gcf().autofmt_xdate()
-
     plt.tight_layout()
     plt.show()
 
-def plot_coarse_uncertainty(coarse_unc):
-    resolutions = coarse_unc.coarse_resolutions
-    times = coarse_unc.times_taken
 
+def plot_coarse_uncertainty(coarse_unc: CoarseUncertainty) -> None:
+    """
+    Plots calculation time vs coarse resolution.
+
+    :param coarse_unc: Coarse uncertainty data.
+    :type coarse_unc: CoarseUncertainty
+    """
     plt.figure(figsize=(6, 4))
-    plt.plot(resolutions, times, marker="o", color="green")
+    plt.plot(coarse_unc.coarse_resolutions, coarse_unc.times_taken, marker="o", color="green")
     plt.xlabel("Coarse Resolution (m)")
     plt.ylabel("Time (seconds)")
     plt.title("Calculation Time vs Coarse Reso")
     plt.grid(True)
-
     plt.tight_layout()
     plt.show()
 
-def show_analysis_overview(unc_res=None, timeseries_data=None, dam_name=""):
+
+def show_analysis_overview(
+    unc_res: Optional[UncertaintyAnalysisResult] = None,
+    timeseries_data: Optional[TimeSeries] = None,
+    dam_name: str = "",
+) -> None:
     """
-    Shows all uncertainty and timeseries analyses in a single dashboard popup.
-    Supports rendering a subset of panels if either parameter is None.
+    Renders a 2×3 analysis dashboard combining uncertainty and timeseries panels.
+
+    Saves the figure to ``your_outputs/Analysis_Dashboard.png``.
+
+    :param unc_res: Uncertainty analysis results, or None to skip those panels.
+    :type unc_res: Optional[UncertaintyAnalysisResult]
+    :param timeseries_data: Timeseries data, or None to skip those panels.
+    :type timeseries_data: Optional[TimeSeries]
+    :param dam_name: Dam name for the title.
+    :type dam_name: str
     """
     if unc_res is None and timeseries_data is None:
         print("No analysis data to plot.")
@@ -114,7 +171,6 @@ def show_analysis_overview(unc_res=None, timeseries_data=None, dam_name=""):
     else:
         fig.suptitle("Analysis Dashboard", fontsize=16)
 
-    # 1. Threshold
     if unc_res is not None:
         th = unc_res.threshold_unc
         axes[0].plot(th.thresholds, th.areas_km2, marker="o")
@@ -126,7 +182,6 @@ def show_analysis_overview(unc_res=None, timeseries_data=None, dam_name=""):
     else:
         axes[0].axis('off')
 
-    # 2. Resolution
     if unc_res is not None:
         res = unc_res.resolution_unc
         axes[1].plot(res.resolutions, res.areas_km2, marker="o")
@@ -138,7 +193,6 @@ def show_analysis_overview(unc_res=None, timeseries_data=None, dam_name=""):
     else:
         axes[1].axis('off')
 
-    # 3. Coarse Time vs Res
     if unc_res is not None:
         co = unc_res.coarse_unc
         axes[2].plot(co.coarse_resolutions, co.times_taken, marker="o", color="green")
@@ -149,7 +203,6 @@ def show_analysis_overview(unc_res=None, timeseries_data=None, dam_name=""):
     else:
         axes[2].axis('off')
 
-    # 4. Timeseries (Cartesian)
     if timeseries_data is not None:
         ts = timeseries_data
         if not ts.times:
@@ -170,7 +223,6 @@ def show_analysis_overview(unc_res=None, timeseries_data=None, dam_name=""):
                 label.set_rotation(45)
                 label.set_ha('right')
 
-            # 5. Timeseries (Polar)
             pos = axes[4].get_position()
             axes[4].remove()
             axes[4] = fig.add_axes(pos, projection='polar')
@@ -183,28 +235,39 @@ def show_analysis_overview(unc_res=None, timeseries_data=None, dam_name=""):
                 axes[4].legend(loc='lower left', bbox_to_anchor=(1, 0))
             axes[4].set_title("Area vs Time (Cyclic Year)")
 
-            import calendar
-            axes[4].set_xticks(np.linspace(0, 2*np.pi, 12, endpoint=False))
+            axes[4].set_xticks(np.linspace(0, 2 * np.pi, 12, endpoint=False))
             axes[4].set_xticklabels(calendar.month_abbr[1:13])
     else:
         axes[3].axis('off')
         axes[4].axis('off')
 
-    # 6. Empty
     axes[5].axis('off')
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    import os
     os.makedirs('your_outputs', exist_ok=True)
     plt.savefig('your_outputs/Analysis_Dashboard.png', bbox_inches='tight')
     plt.show()
 
 
-def show_extrema_dashboard(min_extrema, max_extrema, dam_name=""):
+def show_extrema_dashboard(
+    min_extrema: ExtremaResult,
+    max_extrema: ExtremaResult,
+    dam_name: str = "",
+) -> None:
     """
-    Shows a dedicated 2x6 extrema dashboard in a separate matplotlib window.
-    Each row displays: RGB, NDWI, Optical Mask, Optical Reservoir, SAR Backscatter, SAR Reservoir.
-    Row 1 = Global Minimum area date, Row 2 = Global Maximum area date.
+    Renders a 2×6 extrema diagnostic dashboard in a separate matplotlib window.
+
+    Row 1 shows the global minimum area date, Row 2 the global maximum.
+    Columns: RGB, NDWI, Optical Mask, Selected Reservoir, SAR Backscatter, SAR Reservoir.
+
+    Saves the figure to ``your_outputs/Extrema_Dashboard.png``.
+
+    :param min_extrema: Diagnostic data for the global minimum area date.
+    :type min_extrema: ExtremaResult
+    :param max_extrema: Diagnostic data for the global maximum area date.
+    :type max_extrema: ExtremaResult
+    :param dam_name: Dam name for the title.
+    :type dam_name: str
     """
     from pipeline.visuals import normalize_rgb
 
@@ -245,11 +308,10 @@ def show_extrema_dashboard(min_extrema, max_extrema, dam_name=""):
 
         axes[row_idx][0].set_ylabel(
             f"Global {row_label}\n({extrema.date_str})",
-            fontsize=11, rotation=0, labelpad=80, va='center'
+            fontsize=11, rotation=0, labelpad=80, va='center',
         )
 
     plt.tight_layout(rect=[0.06, 0.03, 1, 0.93])
-    import os
     os.makedirs('your_outputs', exist_ok=True)
     plt.savefig('your_outputs/Extrema_Dashboard.png', bbox_inches='tight')
     plt.show()

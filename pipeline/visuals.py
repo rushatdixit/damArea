@@ -1,23 +1,25 @@
 """
-Dam Area Measure — Visualization Module
+Pipeline visualization module.
 
-This module:
-- Does NOT compute NDWI
-- Does NOT compute area
-- Does NOT modify masks
-
-It only visualizes results produced by the pipeline.
-
-Designed for research-quality figures.
+Renders the full pipeline progression and individual diagnostic figures.
+Does not compute or modify data — visualization only.
 """
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+from typing import Optional
+
 
 def normalize_rgb(rgb: np.ndarray) -> np.ndarray:
     """
     Robust RGB normalization using percentile stretch.
-    Prevents dark/black images.
+
+    :param rgb: Raw RGB array.
+    :type rgb: np.ndarray
+    :return: Normalized RGB array clipped to [0, 1].
+    :rtype: np.ndarray
     """
     rgb = np.asarray(rgb).astype(float)
 
@@ -28,6 +30,7 @@ def normalize_rgb(rgb: np.ndarray) -> np.ndarray:
     rgb = np.clip((rgb - p2) / (p98 - p2), 0, 1)
 
     return rgb
+
 
 def show_pipeline_overview(
     rgb: np.ndarray,
@@ -41,52 +44,62 @@ def show_pipeline_overview(
     coarse_selected_mask: np.ndarray,
 ) -> None:
     """
-    Displays the full pipeline progression:
+    Displays the full pipeline progression as a 2×3 grid:
+    RGB → NDWI → Mask → Selected → 50km Context → Final Area.
 
-    RGB → NDWI → Mask → Selected → Contour + Area
+    Saves the figure to ``your_outputs/Pipeline_Overview.png``.
+
+    :param rgb: RGB composite array.
+    :type rgb: np.ndarray
+    :param ndwi: NDWI array.
+    :type ndwi: np.ndarray
+    :param full_mask: Full binary water mask.
+    :type full_mask: np.ndarray
+    :param selected_mask: Binary mask of the selected reservoir.
+    :type selected_mask: np.ndarray
+    :param contour_pixels: Contour coordinates in (row, col) format.
+    :type contour_pixels: np.ndarray
+    :param area_km2: Estimated reservoir area in km².
+    :type area_km2: float
+    :param uncertainty_km2: Uncertainty bound in km².
+    :type uncertainty_km2: float
+    :param coarse_mask: Coarse-scale water mask for context.
+    :type coarse_mask: np.ndarray
+    :param coarse_selected_mask: Coarse-scale selected reservoir mask.
+    :type coarse_selected_mask: np.ndarray
     """
-
     rgb = normalize_rgb(rgb)
     contour_pixels = np.array(contour_pixels)
     plt.figure(figsize=(16, 10))
 
-    # RGB
     plt.subplot(2, 3, 1)
     plt.title("RGB")
     plt.imshow(rgb)
     plt.axis("off")
 
-    # NDWI
     plt.subplot(2, 3, 2)
     plt.title("NDWI")
     im = plt.imshow(ndwi, cmap="RdBu")
     plt.colorbar(im, fraction=0.046)
     plt.axis("off")
 
-    # Full mask
     plt.subplot(2, 3, 3)
     plt.title("All Water")
     plt.imshow(full_mask, cmap="Blues")
     plt.axis("off")
 
-    # Selected mask
     plt.subplot(2, 3, 4)
     plt.title("Selected Reservoir")
     plt.imshow(selected_mask, cmap="Blues")
     plt.axis("off")
 
-    # 50km x 50km Context
     plt.subplot(2, 3, 5)
     plt.title("50km x 50km Context")
     plt.imshow(coarse_mask, cmap="Blues", alpha=0.5)
-    
-    # Overlay selected reservoir in distinct color (e.g., Red) to mark it
-    import matplotlib.colors as mcolors
     cmap_red = mcolors.ListedColormap(['none', 'red'])
     plt.imshow(coarse_selected_mask, cmap=cmap_red)
     plt.axis("off")
 
-    # Final overlay
     plt.subplot(2, 3, 6)
     plt.title(f"Final Area\nArea: {area_km2:.4f} ± {uncertainty_km2:.4f} km²")
     plt.imshow(rgb)
@@ -94,21 +107,29 @@ def show_pipeline_overview(
     plt.axis("off")
 
     plt.tight_layout()
-    import os
     os.makedirs('your_outputs', exist_ok=True)
     plt.savefig('your_outputs/Pipeline_Overview.png', bbox_inches='tight')
     plt.show()
+
 
 def show_individual_figures(
     rgb: np.ndarray,
     ndwi: np.ndarray,
     full_mask: np.ndarray,
     selected_mask: np.ndarray,
-)-> None:
+) -> None:
     """
-    Displays each stage separately for detailed inspection.
-    """
+    Displays each pipeline stage as a separate figure for detailed inspection.
 
+    :param rgb: RGB composite array.
+    :type rgb: np.ndarray
+    :param ndwi: NDWI array.
+    :type ndwi: np.ndarray
+    :param full_mask: Full binary water mask.
+    :type full_mask: np.ndarray
+    :param selected_mask: Selected reservoir mask.
+    :type selected_mask: np.ndarray
+    """
     rgb = normalize_rgb(rgb)
     plt.figure()
     plt.title("RGB")
