@@ -6,6 +6,7 @@ from typing import Any
 from sentinelhub import BBox
 import datetime
 import pandas as pd
+import numpy as np
 from sentinel.request import NoImageryFoundError
 from concurrent.futures import ThreadPoolExecutor
 
@@ -123,4 +124,24 @@ def compute_timeseries(
         df = pd.DataFrame(columns=['area_km2'])
         df.index.name = 'date'
 
-    return TimeSeries(df=df)
+    min_date_str = None
+    max_date_str = None
+
+    if not df.empty:
+        min_date = df['area_km2'].idxmin()
+        max_date = df['area_km2'].idxmax()
+
+        for c_date, n_date in sub_intervals:
+            if pd.Timestamp(c_date) == pd.Timestamp(min_date):
+                min_date_str = c_date.strftime("%Y-%m-%d") + "," + n_date.strftime("%Y-%m-%d")
+                break
+        for c_date, n_date in sub_intervals:
+            if pd.Timestamp(c_date) == pd.Timestamp(max_date):
+                max_date_str = c_date.strftime("%Y-%m-%d") + "," + n_date.strftime("%Y-%m-%d")
+                break
+
+    return TimeSeries(
+        df=df,
+        min_date_str=min_date_str,
+        max_date_str=max_date_str
+    )

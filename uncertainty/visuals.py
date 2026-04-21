@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import numpy as np
 
 def plot_threshold_uncertainty(threshold_unc):
     thresholds = threshold_unc.thresholds
@@ -105,7 +106,7 @@ def show_analysis_overview(unc_res=None, timeseries_data=None, dam_name=""):
         print("No analysis data to plot.")
         return
 
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    fig, axes = plt.subplots(2, 3, figsize=(16, 10))
     axes = axes.flatten()
 
     if dam_name:
@@ -148,12 +149,13 @@ def show_analysis_overview(unc_res=None, timeseries_data=None, dam_name=""):
     else:
         axes[2].axis('off')
 
-    # 4. Timeseries
+    # 4. Timeseries (Cartesian)
     if timeseries_data is not None:
         ts = timeseries_data
         if not ts.times:
             axes[3].text(0.5, 0.5, "No Timeseries Data", ha='center', va='center')
             axes[3].axis('off')
+            axes[4].axis('off')
         else:
             axes[3].plot(ts.times, ts.areas_km2, marker="o", linestyle="-", color="b")
             if ts.mean_km2 > 0:
@@ -167,11 +169,87 @@ def show_analysis_overview(unc_res=None, timeseries_data=None, dam_name=""):
             for label in axes[3].get_xticklabels():
                 label.set_rotation(45)
                 label.set_ha('right')
+
+            # 5. Timeseries (Polar)
+            pos = axes[4].get_position()
+            axes[4].remove()
+            axes[4] = fig.add_axes(pos, projection='polar')
+
+            angles = [t.timetuple().tm_yday / 365.25 * 2 * np.pi for t in ts.times]
+            axes[4].plot(angles, ts.areas_km2, marker="o", linestyle="-", color="b")
+
+            if ts.mean_km2 > 0:
+                axes[4].axhline(ts.mean_km2, linestyle="--", color="r", label="Mean Area")
+                axes[4].legend(loc='lower left', bbox_to_anchor=(1, 0))
+            axes[4].set_title("Area vs Time (Cyclic Year)")
+
+            import calendar
+            axes[4].set_xticks(np.linspace(0, 2*np.pi, 12, endpoint=False))
+            axes[4].set_xticklabels(calendar.month_abbr[1:13])
     else:
         axes[3].axis('off')
+        axes[4].axis('off')
+
+    # 6. Empty
+    axes[5].axis('off')
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     import os
-    os.makedirs('outputs', exist_ok=True)
-    plt.savefig('outputs/Analysis_Dashboard.png', bbox_inches='tight')
+    os.makedirs('your_outputs', exist_ok=True)
+    plt.savefig('your_outputs/Analysis_Dashboard.png', bbox_inches='tight')
+    plt.show()
+
+
+def show_extrema_dashboard(min_extrema, max_extrema, dam_name=""):
+    """
+    Shows a dedicated 2x6 extrema dashboard in a separate matplotlib window.
+    Each row displays: RGB, NDWI, Optical Mask, Optical Reservoir, SAR Backscatter, SAR Reservoir.
+    Row 1 = Global Minimum area date, Row 2 = Global Maximum area date.
+    """
+    from pipeline.visuals import normalize_rgb
+
+    fig, axes = plt.subplots(2, 6, figsize=(24, 8))
+
+    title = "Extrema Dashboard"
+    if dam_name:
+        title += f" for {dam_name}"
+    fig.suptitle(title, fontsize=16)
+
+    labels = ["RGB", "NDWI", "Optical Mask", "Selected Reservoir", "SAR Backscatter", "SAR Reservoir"]
+
+    for row_idx, (extrema, row_label) in enumerate([(min_extrema, "Min"), (max_extrema, "Max")]):
+        data_list = [
+            extrema.rgb,
+            extrema.ndwi,
+            extrema.opt_mask,
+            extrema.opt_sel,
+            extrema.sar,
+            extrema.sar_sel,
+        ]
+        cmaps = [None, "RdBu", "Blues", "Blues", "gray", "Blues"]
+
+        for col_idx, (data, cmap, label) in enumerate(zip(data_list, cmaps, labels)):
+            ax = axes[row_idx][col_idx]
+            if data is not None:
+                display = data
+                if col_idx == 0:
+                    display = normalize_rgb(np.array(display))
+                elif col_idx == 4:
+                    display = normalize_rgb(np.array(display))
+                ax.imshow(display, cmap=cmap)
+            else:
+                ax.text(0.5, 0.5, "N/A", ha='center', va='center', fontsize=14)
+            if row_idx == 0:
+                ax.set_title(label)
+            ax.axis('off')
+
+        axes[row_idx][0].set_ylabel(
+            f"Global {row_label}\n({extrema.date_str})",
+            fontsize=11, rotation=0, labelpad=80, va='center'
+        )
+
+    plt.tight_layout(rect=[0.06, 0.03, 1, 0.93])
+    import os
+    os.makedirs('your_outputs', exist_ok=True)
+    plt.savefig('your_outputs/Extrema_Dashboard.png', bbox_inches='tight')
     plt.show()
