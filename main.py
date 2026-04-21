@@ -11,10 +11,11 @@ from fetch_dam.get_dam import dam_name_to_coords
 from pipeline.orchestration import (
     run_area_estimation,
     run_uncertainty_analysis,
-    run_timeseries
+    run_timeseries,
+    run_extrema_analysis
 )
 from pipeline.visuals import show_pipeline_overview
-from uncertainty.visuals import show_analysis_overview
+from uncertainty.visuals import show_analysis_overview, show_extrema_dashboard
 
 def main():
     parser = argparse.ArgumentParser(description="Dam Area Pipeline")
@@ -29,6 +30,7 @@ def main():
     
     # Advanced Settings
     parser.add_argument("--sar", type=str, choices=['y', 'n'], default='y', help="Allows automatic Sentinel-1 SAR Cloud Failovers (y/n)")
+    parser.add_argument("--extrema", type=str, choices=['y', 'n'], default='n', help="Show full Optical+SAR diagnostic for global min/max area dates (y/n)")
     parser.add_argument("--timeseries-step", type=int, default=30, help="Interval size in days for Timeseries scans")
     parser.add_argument("--resolution", type=int, default=10, help="Optical target resolution in meters")
     parser.add_argument("--verbose", type=str, choices=['y', 'n'], default='n', help="Enable deep debug logging (y/n)")
@@ -140,6 +142,29 @@ def main():
 
     if unc_res is not None or timeseries_data is not None:
         show_analysis_overview(unc_res=unc_res, timeseries_data=timeseries_data, dam_name=dam_name)
+
+    # Extrema Dashboard (separate window)
+    if args.extrema == 'y' and timeseries_data is not None:
+        if timeseries_data.min_date_str or timeseries_data.max_date_str:
+            if area_res is not None:
+                extrema_bbox = area_res.reservoir_bbox
+                extrema_res = area_res.resolution
+            else:
+                extrema_bbox = start_bbox
+                extrema_res = resolution
+            min_ext, max_ext = run_extrema_analysis(
+                dam=dam,
+                reservoir_bbox=extrema_bbox,
+                timeseries_data=timeseries_data,
+                resolution=extrema_res,
+                threshold=threshold,
+            )
+            if min_ext is not None and max_ext is not None:
+                show_extrema_dashboard(min_ext, max_ext, dam_name=dam_name)
+            else:
+                print("Could not generate extrema dashboard (missing min or max data).")
+        else:
+            print("No extrema date information available from timeseries.")
 
     print("Pipeline complete.")
 

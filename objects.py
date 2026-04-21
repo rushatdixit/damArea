@@ -64,6 +64,7 @@ class SatelliteData:
     rgb: Optional[np.ndarray]
     ndwi: Optional[np.ndarray]
     mask: Optional[np.ndarray]
+    sar: Optional[np.ndarray]
     water_area_m2: Optional[float]
     resolution: float
 
@@ -139,8 +140,23 @@ from datetime import datetime
 import numpy as np
 
 @dataclass
+class ExtremaResult:
+    """
+    Data container for full diagnostic visualization of global extrema.
+    """
+    date_str: str
+    rgb: Optional[np.ndarray]
+    ndwi: Optional[np.ndarray]
+    opt_mask: Optional[np.ndarray]
+    opt_sel: Optional[np.ndarray]
+    sar: Optional[np.ndarray]
+    sar_sel: Optional[np.ndarray]
+
+@dataclass
 class TimeSeries:
     df: pd.DataFrame
+    min_date_str: Optional[str] = None
+    max_date_str: Optional[str] = None
 
     @property
     def times(self) -> List[datetime]:
