@@ -95,8 +95,8 @@ def show_pipeline_overview(
 
     plt.tight_layout()
     import os
-    os.makedirs('outputs', exist_ok=True)
-    plt.savefig('outputs/Pipeline_Overview.png', bbox_inches='tight')
+    os.makedirs('your_outputs', exist_ok=True)
+    plt.savefig('your_outputs/Pipeline_Overview.png', bbox_inches='tight')
     plt.show()
 
 def show_individual_figures(
