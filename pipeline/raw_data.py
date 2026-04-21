@@ -89,10 +89,7 @@ def acquire_satellite_data(
             plt.close()
             
         if wants_mask or wants_area:
-            sar_threshold = 0.05
-            if wants_debugs:
-                print(f"Applying SAR threshold {sar_threshold} to VV backscatter...")
-            mask_arr = sar_water_mask(sar_bands, sar_threshold)
+            mask_arr = sar_water_mask(sar_bands)
 
             if verbose_dir and np.array(mask_arr).size > 0:
                 plt.figure(figsize=(8,8))
@@ -109,6 +106,7 @@ def acquire_satellite_data(
             rgb=None,
             ndwi=None,
             mask=mask_arr,
+            sar=sar_bands,
             water_area_m2=water_area,
             resolution=resolution,
         )
@@ -173,6 +171,7 @@ def acquire_satellite_data(
         rgb=rgb,
         ndwi=ndwi_arr,
         mask=mask_arr,
+        sar=None,
         water_area_m2=water_area,
         resolution=resolution,
     )
