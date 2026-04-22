@@ -111,17 +111,45 @@ You can directly control pipeline logic via precise modular flags using the glob
 damArea "Khadakwasla Dam" --start-date 2023-01-01 --end-date 2023-12-31 --timeseries-step 30 --verbose y
 ```
 
-### CLI Arguments
-- `--area {y,n}`: Estimate Initial Reservoir Baseline Area.
-- `--unc {y,n}`: Process and calculate Coarse, Threshold, and Resolution boundary uncertainties.
-- `--time {y,n}`: Scans chronological intervals and performs timeline analysis.
-- `--sar {y,n}`: Utilize Sentinel-1 cloud-piercing Radar as an automatic fallback on fully clouded optical intervals.
-- `--verbose {y,n}`: Dump matrix arrays down into `./deep_debug` for manual validation!
-- `--delete-debug y`: Safely obliterate any previously accumulated image plot caches.
+### Pipeline Phase Flags
+| Flag | Values | Default | Description |
+|------|--------|---------|-------------|
+| `--area` | `y`, `n` | `y` | Estimate initial reservoir baseline area |
+| `--unc` | `y`, `n` | `y` | Process threshold, resolution, and coarse uncertainty analyses |
+| `--time` | `y`, `n` | `y` | Run chronological timeseries analysis |
+
+### Satellite & Resolution Flags
+| Flag | Values | Default | Description |
+|------|--------|---------|-------------|
+| `--sar` | `y`, `n` | `y` | Enable Sentinel-1 SAR as automatic cloud-failover |
+| `--resolution` | integer | `10` | Optical target resolution in meters per pixel |
+| `--timeseries-step` | integer | `30` | Interval size in days between timeseries scans |
+| `--start-date` | `YYYY-MM-DD` | `2023-01-01` | Analysis start date |
+| `--end-date` | `YYYY-MM-DD` | `2023-12-31` | Analysis end date |
+
+### Diagnostic & Debugging Flags
+| Flag | Values | Default | Description |
+|------|--------|---------|-------------|
+| `--extrema` | `y`, `n` | `n` | Opens a dedicated 2×6 diagnostic dashboard showing full Optical (RGB, NDWI, Mask, Reservoir) and SAR (Backscatter, Reservoir) data for the global minimum and maximum area dates identified by the timeseries |
+| `--debug` | `y`, `n` | `n` | Exports RGB diagnostic images to the `debug/` directory for every satellite acquisition during the pipeline run. Useful for visually inspecting what the pipeline sees at each step |
+| `--verbose` | `y`, `n` | `n` | Enables deep debug logging. Exports RGB, NDWI, and water mask images for every acquisition to `deep_debug/`. Includes SAR backscatter and mask plots when SAR failover is triggered. Also enforces a 1.5s rate limiter between API calls to avoid throttling |
+| `--delete-debug` | `y`, `n` | `n` | Safely deletes `debug/` and `deep_debug/` directories after manual confirmation |
+
+### Example: Debug with Extrema
+
+```bash
+damArea "Panshet" --extrema y --debug y --unc n
+```
+
+This will:
+1. Run area estimation and timeseries analysis
+2. Save RGB images for each acquisition to `debug/`
+3. Open the analysis dashboard (saved to `your_outputs/Analysis_Dashboard.png`)
+4. Open a separate 12-panel extrema dashboard (saved to `your_outputs/Extrema_Dashboard.png`)
 
 ## Visualizations & Sample Outputs
 
-The pipeline automatically compiles its analyses and generates visualization graphics for each dam processed. They are dumped to the `outputs/` folder. Below are our exactly three primary diagnostic snapshots:
+The pipeline automatically compiles its analyses and generates visualization graphics for each dam processed. They are saved to the `your_outputs/` folder. Below are the primary diagnostic snapshots:
 
 ### 1. Optical Pipeline Diagnostics
 Visualizes the extraction process from Raw RGB, NDWI bounding, up to final isolated water-body contour capturing.
@@ -169,5 +197,6 @@ Water extraction using SAR operates on the physics of **Specular Reflection**.
 **Our Specific Implementation**:
 The pipeline requests the **VV Polarization** (Vertical Send, Vertical Receive) sequence from `.SENTINEL1_IW` (Interferometric Wide Swath) GRD collections. The raw amplitude signal arrays arrive with extreme exponential variance.
 
-1. **Backscatter Thresholding:** By evaluating the coefficient histogram empirically, we isolate everything underneath `SAR_THRESHOLD = 0.05`. Any physical pixel reflecting less than `0.05` intensity energy is computationally verified as fluid water. In extreme noise cases, `normalize_rgb()` percentile bounds stretching ensures outlier pixels don't artificially crush dynamic range!
-2. **Connectivity Mapping:** The identical connected-components isolation logic applied to optical NDWI works simultaneously against the SAR logic. Since radar noise is exceedingly prone to speckling (salt and pepper static backscatter), our bounding constraint strictly selects the largest single coalesced body connected near the geographical OpenStreetMap anchor ensuring puddles and static noise don't corrupt metric tracking.
+1. **Speckle Suppression:** SAR imagery is inherently noisy due to coherent interference (speckle). A 5×5 median filter (`SAR_SPECKLE_KERNEL`) smooths the backscatter before thresholding, preventing the water body from fragmenting into disconnected components.
+2. **Backscatter Thresholding:** By evaluating the coefficient histogram empirically, we isolate everything underneath `SAR_THRESHOLD = 0.09`. Any physical pixel reflecting less than this intensity energy is computationally verified as fluid water.
+3. **Connectivity Mapping:** The identical connected-components isolation logic applied to optical NDWI works simultaneously against the SAR logic. Our bounding constraint strictly selects the largest single coalesced body connected near the geographical OpenStreetMap anchor ensuring puddles and static noise don't corrupt metric tracking.
