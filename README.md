@@ -60,6 +60,8 @@ The pipeline is entirely controlled through a robust CLI with several subcommand
 
 ```bash
 damArea <subcommand> [options]
+```
+
 To use the global `damArea` command efficiently from any terminal session, you map an alias in your shell configuration to automatically handle the Python execution and paths.
 
 ### Global Command Setup (Mac/Linux)
@@ -75,8 +77,7 @@ source ~/.zshrc
 Now you can run the pipeline directly:
 
 ```bash
-damArea "Dam Name"
-damArea "dam_name"
+damArea <subcommand> "Dam Name" <options>
 ```
 
 ### Core Pipeline (`run`)
