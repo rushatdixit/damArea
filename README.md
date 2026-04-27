@@ -172,15 +172,15 @@ The pipeline automatically compiles its analyses and generates visualization gra
 
 ### 1. Optical Pipeline Diagnostics
 Visualizes the extraction process from Raw RGB, NDWI bounding, up to final isolated water-body contour capturing.
-![Pipeline Diagnostics](file:///Users/merucoding/damArea/outputs/Pipeline_Overview.png)
+![Pipeline Diagnostics](outputs/Pipeline_Overview.png)
 
 ### 2. Autonomous Cloud Fallovers via Sentinel-1 SAR
 Tracks times the Sentinel-1 SAR triggers when optical satellites are blinded by extreme weather, rendering the literal backscatter of physical water matrices.
-![SAR VV Backscatter Filtering](file:///Users/merucoding/damArea/outputs/SAR_VV_Example.png)
+![SAR VV Backscatter Filtering](outputs/SAR_VV_Example.png)
 
 ### 3. Timeseries Uncertainty Dashboard
 Plots systematic evaluation charts measuring scale robustness against varying NDWI thresholds and pixel physical scales alongside chronological tracking.
-![Analysis Dashboard](file:///Users/merucoding/damArea/outputs/Analysis_Dashboard.png)
+![Analysis Dashboard](outputs/Analysis_Dashboard.png)
 
 ## Mathematical Models
 
