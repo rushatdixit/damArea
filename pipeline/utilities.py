@@ -50,3 +50,19 @@ def adjust_resolution(bbox: BBox, resolution: float, max_pixels: int = 2500) -> 
         resolution = float(int(np.ceil(max_dimension_m / max_pixels)))
 
     return resolution
+
+
+def compute_pixel_dimensions(bbox: BBox, resolution: float) -> tuple[int, int]:
+    """
+    Computes the width and height in pixels for a given BBox and resolution.
+
+    :param bbox: Bounding box in UTM (meters).
+    :type bbox: BBox
+    :param resolution: Pixel resolution in meters.
+    :type resolution: float
+    :return: Width and height in pixels as a tuple (width, height).
+    :rtype: tuple[int, int]
+    """
+    width_m = bbox.max_x - bbox.min_x
+    height_m = bbox.max_y - bbox.min_y
+    return int(np.ceil(width_m / resolution)), int(np.ceil(height_m / resolution))
