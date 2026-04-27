@@ -1,17 +1,8 @@
 """
-Sentinel hub uses javascript based evalscript
-It tells sentinel hub what to do
-This script says:
-    - Input bands are B3 = Green, B8 = NIR
-    - Outputs 2 bands
-    - Evaluates whether a pixel is how much green and how much nir
-    - The second evalscript outputs rgb as well
-SCL:
-  - SCL is the way sentinel hub differentiates pixels containing water, vegetation, snow etc.
-  - the most important is that it includes clouds
+Sentinel Hub evalscripts for requesting specific band combinations.
 """
 
-NDWI_EVALSCRIPT = """
+NDWI_EVALSCRIPT: str = """
 //VERSION=3
 function setup() {
   return {
@@ -28,7 +19,7 @@ function evaluatePixel(sample) {
 }
 """
 
-RGB_EVALSCRIPT = """
+RGB_EVALSCRIPT: str = """
 //VERSION=3
 function setup() {
   return {
@@ -42,7 +33,7 @@ function evaluatePixel(sample) {
 }
 """
 
-SAR_VV_EVALSCRIPT = """
+SAR_VV_EVALSCRIPT: str = """
 //VERSION=3
 function setup() {
   return {
@@ -52,8 +43,6 @@ function setup() {
 }
 
 function evaluatePixel(sample) {
-  // Return backscatter in linear scale (already converted by Sentinel Hub depending on config)
-  // Usually we use log-scaling (dB) or linear, linearly scaled is standard FLOAT32 mapping
   return [sample.VV];
 }
 """

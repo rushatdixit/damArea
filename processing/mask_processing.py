@@ -41,38 +41,53 @@ from skimage import measure
 from sentinelhub import BBox, CRS, transform_point
 from typing import Tuple
 
-def largest_connected_component(mask) -> np.ndarray:
-    """
-    Keeps only the largest 8 connected component polygon in the water mask
-    """
-    mask = np.asarray(mask)
-    mask = mask.astype(bool)
 
-    structure = np.ones((3,3), dtype=int)
+def largest_connected_component(mask: np.ndarray) -> np.ndarray:
+    """
+    Keeps only the largest 8-connected component in a binary mask.
+
+    :param mask: Binary water mask.
+    :type mask: np.ndarray
+    :return: Boolean mask with only the largest component retained.
+    :rtype: np.ndarray
+    """
+    mask = np.asarray(mask).astype(bool)
+
+    structure = np.ones((3, 3), dtype=int)
     labeled, num_features = label(mask, structure=structure)
 
-    #empty mask
     if num_features == 0:
         return mask
-    #counting how many times an integer appears
+
     component_sizes = np.bincount(labeled.ravel())
-    #ignoring the number of times 0 appears
     component_sizes[0] = 0
-    #the group which appears the most amount of time
-    if len(component_sizes) <= 1: # if only background 0 exists, or array is empty
+
+    if len(component_sizes) <= 1:
         return np.zeros_like(labeled, dtype=bool)
     largest_label = component_sizes.argmax()
     return labeled == largest_label
 
+
 def select_closest_component(
-        mask : np.ndarray,
-        dam_coords_wgs84 : Tuple[float,float],
-        bbox_utm : BBox,
-        resolution : float
-    ) -> np.ndarray:
+    mask: np.ndarray,
+    dam_coords_wgs84: Tuple[float, float],
+    bbox_utm: BBox,
+    resolution: float,
+) -> np.ndarray:
     """
-    This solves the panshet-varasgaon problem.
-    Selects the largest contour closest to the inputted dam.
+    Selects the water component whose centroid is closest to the dam coordinates.
+
+    :param mask: Binary water mask.
+    :type mask: np.ndarray
+    :param dam_coords_wgs84: Dam coordinates as (latitude, longitude) in WGS84.
+    :type dam_coords_wgs84: Tuple[float, float]
+    :param bbox_utm: UTM bounding box corresponding to the mask.
+    :type bbox_utm: BBox
+    :param resolution: Pixel resolution in meters.
+    :type resolution: float
+    :return: Binary mask of the selected component.
+    :rtype: np.ndarray
+    :raises ValueError: If no water bodies are found.
     """
     mask = np.array(mask).astype(bool)
     labeled = measure.label(mask)
@@ -80,15 +95,15 @@ def select_closest_component(
 
     if len(regions) == 0:
         raise ValueError("No water bodies found.")
-    
+
     lat, lon = dam_coords_wgs84
     utm_crs = bbox_utm.crs
     dam_x, dam_y = transform_point(
         (lon, lat),
         CRS.WGS84,
-        utm_crs
+        utm_crs,
     )
-    
+
     min_dist = np.inf
     selected_label = None
     for region in regions:
@@ -101,7 +116,3 @@ def select_closest_component(
             selected_label = region.label
     selected_mask = labeled == selected_label
     return selected_mask
-
-
-
-

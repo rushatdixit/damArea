@@ -1,29 +1,20 @@
 """
-defines a point in space
-it also does everything a vector will do.
-basically a vector
+Defines an immutable Point in n-dimensional space with vector operations.
 """
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Tuple, Sequence
+from objects import PolarCoordinates
 import math
 
 @dataclass(frozen=True)
 class Point:
     """
-    defines a point in space
-    it contains the properties:
-        - dimension
-        - distance from origin
-    it contains the methods:
-        - distance
-        - angle
-        - rotate
-        - cross
-        - dot
-        -polar_coordinates
-        - __repr__
-        """
+    Immutable n-dimensional point supporting vector arithmetic.
+
+    :param coordinates: Sequence of coordinate values (minimum 2).
+    :type coordinates: Sequence[float]
+    """
         
     coordinates : Sequence[float]
     
@@ -106,9 +97,16 @@ class Point:
         else:
             raise ValueError("Point must have exactly 2 coordinates")
     
-    def polar_coordinates(self) -> Tuple[float, float]:
+    def polar_coordinates(self) -> PolarCoordinates:
+        """
+        Returns polar coordinates of this 2D point.
+
+        :return: Polar representation with radius and angle.
+        :rtype: PolarCoordinates
+        :raises ValueError: If the point is not 2D.
+        """
         if self.dimension == 2:
-            return (self.distance_from_origin, self.angle())
+            return PolarCoordinates(radius=self.distance_from_origin, angle=self.angle())
         else:
             raise ValueError("Point must have exactly 2 coordinates")
     

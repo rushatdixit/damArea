@@ -12,39 +12,48 @@ Selection Criteria:
 """
 
 import numpy as np
-from typing import Tuple
 from scipy.ndimage import label
 from sentinelhub import CRS, transform_point, BBox
-from objects import Dam
+from objects import Dam, ReservoirSelection
 from constants import MIN_AREA_KM2_SELECTION
 
+
 def select_reservoir_connected_to_dam(
-        mask: np.ndarray,
-        dam: Dam,
-        bbox_utm: BBox,
-        resolution: float,
-        min_area_km2: float = MIN_AREA_KM2_SELECTION,
-        is_debug : bool = True
-    ) -> Tuple[np.ndarray, float]:
+    mask: np.ndarray,
+    dam: Dam,
+    bbox_utm: BBox,
+    resolution: float,
+    min_area_km2: float = MIN_AREA_KM2_SELECTION,
+    is_debug: bool = True,
+) -> ReservoirSelection:
     """
-    Parameters
-    mask : binary water mask
-    dam : Dam object containing location (WGS84)
-    bbox_utm : bounding box in UTM
-    resolution : meters per pixel
-    min_area_km2 : ignore components smaller than this
+    Selects the water body component closest to the dam coordinates.
 
-    Returns
-    selected_mask : binary mask of chosen reservoir
-    area_km2 : computed area using pixel area
+    Performs connected-component labeling on the binary mask, filters out
+    components smaller than a minimum area, and selects the component whose
+    nearest pixel is closest to the dam's projected UTM coordinates.
+
+    :param mask: Binary water mask (2D).
+    :type mask: np.ndarray
+    :param dam: Dam object with WGS84 coordinates.
+    :type dam: Dam
+    :param bbox_utm: Bounding box in UTM corresponding to the mask.
+    :type bbox_utm: BBox
+    :param resolution: Pixel resolution in meters.
+    :type resolution: float
+    :param min_area_km2: Minimum area threshold to filter noise components.
+    :type min_area_km2: float
+    :param is_debug: Whether to print debug information.
+    :type is_debug: bool
+    :return: Selected reservoir mask and its area in km².
+    :rtype: ReservoirSelection
+    :raises ValueError: If no water components are found or none pass filtering.
     """
-
     mask = np.asarray(mask).astype(bool)
     labeled, num_features = label(mask)
 
     if num_features == 0:
         raise ValueError("No water components found.")
-    #included for debugging purposes
     if is_debug:
         print(f"Found {num_features} water components.")
 
@@ -58,28 +67,21 @@ def select_reservoir_connected_to_dam(
     min_distance_sq = np.inf
     selected_component_id = None
     pixel_area_m2 = resolution * resolution
-    
+
     min_x, max_y = bbox_utm.min_x, bbox_utm.max_y
     for component_id in range(1, num_features + 1):
         component_mask = labeled == component_id
         pixel_count = np.sum(component_mask)
 
         area_km2 = (pixel_count * pixel_area_m2) / 1_000_000
-        # Ignore tiny components
         if area_km2 < min_area_km2:
             continue
 
-        # Get pixel indices (row, col) which map to (y, x)
         ys, xs = np.where(component_mask)
-        
-        # Convert pixel coordinates to metric coordinates
-        # BBox min_x is Left, max_y is Top.
-        # Moving right (increasing x pixel) increases easting (min_x + ...).
-        # Moving down (increasing y pixel) decreases northing (max_y - ...).
+
         component_x = min_x + (xs * resolution)
         component_y = max_y - (ys * resolution)
 
-        # Compute minimum boundary distance squared vectorized
         distances_sq = (component_x - dam_x) ** 2 + (component_y - dam_y) ** 2
 
         boundary_distance_sq = np.min(distances_sq)
@@ -89,7 +91,7 @@ def select_reservoir_connected_to_dam(
 
     if selected_component_id is None:
         raise ValueError("No valid reservoir component selected.")
-        
+
     min_distance = np.sqrt(min_distance_sq)
 
     selected_mask = labeled == selected_component_id
@@ -99,4 +101,7 @@ def select_reservoir_connected_to_dam(
     print(f"Selected reservoir area: {selected_area_km2:.4f} km²")
     print(f"Boundary distance to dam: {min_distance:.2f} meters")
 
-    return (selected_mask.astype(int), selected_area_km2)
+    return ReservoirSelection(
+        mask=selected_mask.astype(int),
+        area_km2=selected_area_km2,
+    )

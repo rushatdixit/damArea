@@ -56,6 +56,10 @@ The project utilizes a robust, modular pipeline:
 
 ## Usage
 
+The pipeline is entirely controlled through a robust CLI with several subcommands:
+
+```bash
+damArea <subcommand> [options]
 To use the global `damArea` command efficiently from any terminal session, you map an alias in your shell configuration to automatically handle the Python execution and paths.
 
 ### Global Command Setup (Mac/Linux)
@@ -75,66 +79,95 @@ damArea "Dam Name"
 damArea "dam_name"
 ```
 
-### Example Run
+### Core Pipeline (`run`)
 
-Executing for a major dam like Bhakra Nangal:
-```bash
-damArea "Bhakra Nangal"
-```
-
-**Terminal Output:**
-```text
-Running pipeline for: Bhakra Nangal
-
-Found dam in database. Skipping openstreetmap query.
-24200.0
-Adjusted resolution to : 17
-Fetching RGB Data...
-RGB received | Shape: (2384, 2372, 3)
-Getting NDWI bands...
-Computing NDWI...
-NDWI range: -1.000 to 1.000
-Applying water threshold to NDWI...
-Found 1295 water components.
-Selected reservoir area: 96.1902 km²
-Boundary distance to dam: 54.13 meters
-Optimal resolution for reservoir AOI: 15
-Fetching RGB Data...
-RGB received | Shape: (2449, 1817, 3)
-...
-[Processing Logs]
-...
-Computing Area over Time for interval ('2023-01-01', '2023-12-31')...
-...
-[Timeseries Logs]
-...
------------------------------------
-Final Area: 96.2440 ± 2.8614 km²
------------------------------------
-
-Time elapsed: 148.32 seconds
-Pipeline complete.
-```
-
-## Advanced Execution (CLI)
-
-You can directly control pipeline logic via precise modular flags using the global `damArea` alias:
+To execute the standard end-to-end extraction pipeline, use the `run` command:
 
 ```bash
-damArea "Khadakwasla Dam" --start-date 2023-01-01 --end-date 2023-12-31 --timeseries-step 30 --verbose y
+damArea run "Bhakra Nangal" --start-date 2023-01-01 --end-date 2023-12-31
 ```
 
-### CLI Arguments
-- `--area {y,n}`: Estimate Initial Reservoir Baseline Area.
-- `--unc {y,n}`: Process and calculate Coarse, Threshold, and Resolution boundary uncertainties.
-- `--time {y,n}`: Scans chronological intervals and performs timeline analysis.
-- `--sar {y,n}`: Utilize Sentinel-1 cloud-piercing Radar as an automatic fallback on fully clouded optical intervals.
-- `--verbose {y,n}`: Dump matrix arrays down into `./deep_debug` for manual validation!
-- `--delete-debug y`: Safely obliterate any previously accumulated image plot caches.
+#### Pipeline Phase Flags
+| Flag | Values | Default | Description |
+|------|--------|---------|-------------|
+| `--area` | `y`, `n` | `y` | Estimate initial reservoir baseline area |
+| `--unc` | `y`, `n` | `y` | Process threshold, resolution, and coarse uncertainty analyses |
+| `--time` | `y`, `n` | `y` | Run chronological timeseries analysis |
+
+#### Satellite & Resolution Flags
+| Flag | Values | Default | Description |
+|------|--------|---------|-------------|
+| `--sar` | `y`, `n` | `y` | Enable Sentinel-1 SAR as automatic cloud-failover |
+| `--resolution` | integer | `10` | Optical target resolution in meters per pixel |
+| `--timeseries-step` | integer | `30` | Interval size in days between timeseries scans |
+
+#### Diagnostic & Logging Flags
+| Flag | Values | Default | Description |
+|------|--------|---------|-------------|
+| `--log-level` | `DEBUG`, `INFO`, `WARNING`, `ERROR` | `INFO` | Filter console output verbosity |
+| `--log-file` | file path | None | Output structured JSON logs to a file |
+| `--extrema` | `y`, `n` | `n` | Show diagnostic dashboard for global min/max area dates |
+| `--debug` | `y`, `n` | `n` | Exports RGB diagnostic images to `debug/` |
+| `--verbose` | `y`, `n` | `n` | Exports RGB/NDWI/Masks to `deep_debug/` |
+
+---
+
+## The Debugging Suite
+
+We provide a comprehensive set of non-destructive CLI tools to maintain the pipeline and debug data anomalies without burning Sentinel Hub API Processing Units.
+
+### 1. API Health Check (`doctor`)
+Verifies your local `.env` configuration and makes a zero-cost catalog ping to confirm your Sentinel Hub credentials are valid and unexpired before you begin a heavy job.
+```bash
+damArea doctor
+```
+
+### 2. Joblib Cache Manager (`cache`)
+The pipeline aggressively caches API downloads locally using `joblib`. When thresholds or logic changes, you may want to inspect or purge this data.
+```bash
+damArea cache list       # List all cached functions and their sizes
+damArea cache size       # Total megabytes consumed on disk
+damArea cache purge      # Nuke the entire cache
+```
+
+### 3. API Budget Predictor (`dry-run`)
+Calculates the spatial dimensions of your reservoir, validates Sentinel Hub's 2500px resolution limits, and predicts exactly how many API calls and Processing Units (PU) your job will consume.
+```bash
+damArea dry-run "Hoover Dam" --start-date 2023-01-01 --resolution 10
+```
+
+### 4. Live Quota Monitoring (`rate-status`)
+Sentinel Hub imposes strict rate limits. This tool fetches your current available bucket natively from the API headers.
+```bash
+damArea rate-status
+damArea rate-status --watch  # Live-updating 10s dashboard
+```
+*(Note: the pipeline worker pool also automatically throttles itself if this remaining limit drops below 20 requests)*
+
+### 5. Configuration Auditor (`config`)
+Tired of hunting through `.env`, `constants.py`, and hardcoded files? This prints a unified table of the active pipeline configuration.
+```bash
+damArea config show
+```
+
+### 6. Array & Mask Inspector (`inspect`)
+Need to see exactly why the pipeline failed on a specific date? Load any intermediate Numpy `.npy` or `.pkl` cache file to review it visually in the console without re-running API queries.
+```bash
+damArea inspect bbox "Hoover Dam"                   # See bounding box sizes
+damArea inspect mask path/to/array.npy              # Review water pixels
+damArea inspect ndwi path/to/array.pkl --threshold 0.3
+damArea inspect compare optical.pkl sar.pkl         # Computes Intersection over Union (IoU)
+```
+
+### 7. Output Sanity Validation (`validate`)
+Post-flight sanity checks on your final `your_outputs/*.csv` timeseries data. Flags impossible physical surface areas, identically duplicated timestamps (cache rot), and massive unphysical variations (cloud leaks).
+```bash
+damArea validate "Hoover Dam" --strict
+```
 
 ## Visualizations & Sample Outputs
 
-The pipeline automatically compiles its analyses and generates visualization graphics for each dam processed. They are dumped to the `outputs/` folder. Below are our exactly three primary diagnostic snapshots:
+The pipeline automatically compiles its analyses and generates visualization graphics for each dam processed. They are saved to the `your_outputs/` folder. Below are the primary diagnostic snapshots:
 
 ### 1. Optical Pipeline Diagnostics
 Visualizes the extraction process from Raw RGB, NDWI bounding, up to final isolated water-body contour capturing.
@@ -182,5 +215,6 @@ Water extraction using SAR operates on the physics of **Specular Reflection**.
 **Our Specific Implementation**:
 The pipeline requests the **VV Polarization** (Vertical Send, Vertical Receive) sequence from `.SENTINEL1_IW` (Interferometric Wide Swath) GRD collections. The raw amplitude signal arrays arrive with extreme exponential variance.
 
-1. **Backscatter Thresholding:** By evaluating the coefficient histogram empirically, we isolate everything underneath `SAR_THRESHOLD = 0.05`. Any physical pixel reflecting less than `0.05` intensity energy is computationally verified as fluid water. In extreme noise cases, `normalize_rgb()` percentile bounds stretching ensures outlier pixels don't artificially crush dynamic range!
-2. **Connectivity Mapping:** The identical connected-components isolation logic applied to optical NDWI works simultaneously against the SAR logic. Since radar noise is exceedingly prone to speckling (salt and pepper static backscatter), our bounding constraint strictly selects the largest single coalesced body connected near the geographical OpenStreetMap anchor ensuring puddles and static noise don't corrupt metric tracking.
+1. **Speckle Suppression:** SAR imagery is inherently noisy due to coherent interference (speckle). A 5×5 median filter (`SAR_SPECKLE_KERNEL`) smooths the backscatter before thresholding, preventing the water body from fragmenting into disconnected components.
+2. **Backscatter Thresholding:** By evaluating the coefficient histogram empirically, we isolate everything underneath `SAR_THRESHOLD = 0.09`. Any physical pixel reflecting less than this intensity energy is computationally verified as fluid water.
+3. **Connectivity Mapping:** The identical connected-components isolation logic applied to optical NDWI works simultaneously against the SAR logic. Our bounding constraint strictly selects the largest single coalesced body connected near the geographical OpenStreetMap anchor ensuring puddles and static noise don't corrupt metric tracking.

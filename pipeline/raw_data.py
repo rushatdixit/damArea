@@ -1,44 +1,62 @@
+"""
+Satellite data acquisition pipeline with SAR failover and debug logging.
+"""
+
+import os
 import numpy as np
+from typing import Tuple, List
 from sentinelhub import CRS, BBox
 from sentinel.ndwi import compute_ndwi, water_mask
 from sentinel.request import request_rgb_data, request_sentinel_data, request_sar_data
 from sentinel.sar import sar_water_mask
+from sentinel.tile_stream import split_bbox_into_tiles
 from objects import SatelliteData
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 def acquire_satellite_data(
-            expanded_dam_bbox : BBox,
-            time_interval,
-            resolution : float = 10,
-            threshold : float = 0.3,
-            wants_rgb : bool = True,
-            wants_ndwi : bool = True,
-            wants_mask : bool = True,
-            wants_area : bool = False,
-            wants_debugs : bool = True,
-            use_sar : bool = False
-            ) -> SatelliteData:
+    expanded_dam_bbox: BBox,
+    time_interval: Tuple[str, str],
+    resolution: float = 10,
+    threshold: float = 0.3,
+    wants_rgb: bool = True,
+    wants_ndwi: bool = True,
+    wants_mask: bool = True,
+    wants_area: bool = False,
+    wants_debugs: bool = True,
+    use_sar: bool = False,
+) -> SatelliteData:
     """
-    Acquires satellite data via sentinel hub.
-    
-    :param expanded_dam_bbox: The Expanded Bounding Box of the dam.
+    Acquires and processes satellite imagery from Sentinel Hub.
+
+    Supports both optical (Sentinel-2) and SAR (Sentinel-1) modes.
+    When debug/verbose environment variables are set, saves intermediate
+    diagnostic images to the corresponding directories.
+
+    :param expanded_dam_bbox: UTM bounding box of the area of interest.
     :type expanded_dam_bbox: BBox
-    :param resolution: resolution
+    :param time_interval: Start and end dates as (YYYY-MM-DD, YYYY-MM-DD).
+    :type time_interval: Tuple[str, str]
+    :param resolution: Pixel resolution in meters.
     :type resolution: float
-    :param time_interval: time_interval in dates for ex. 23/1/23 to 25/3/23 (not in this syntax)
-    :param threshold: The ndwi threshold above which water pixels will be counted, should be 0.2 or 0.3
+    :param threshold: NDWI threshold for water classification.
     :type threshold: float
-    :param wants_rgb: If you want rgb data
+    :param wants_rgb: Whether to fetch RGB composite.
     :type wants_rgb: bool
-    :param wants_ndwi: If you want ndwi data (will be calculated anyways)
+    :param wants_ndwi: Whether to compute NDWI.
     :type wants_ndwi: bool
-    :param wants_mask: If you want mask from ndwi
+    :param wants_mask: Whether to generate water mask.
     :type wants_mask: bool
-    :param wants_area: If you want area from water pixels only
+    :param wants_area: Whether to compute total water area.
     :type wants_area: bool
-    :param wants_debugs: Will include debugging statements
+    :param wants_debugs: Whether to print debug statements.
     :type wants_debugs: bool
-    :return: This tuple ---> (rgb, (ndwi, ndwi_arr), (mask, mask_arr), water_area), they will return None if corresponding bool is False
-    :rtype: tuple
+    :param use_sar: Whether to use SAR instead of optical.
+    :type use_sar: bool
+    :return: Container with satellite-derived products.
+    :rtype: SatelliteData
     """
     rgb = None
     ndwi_arr = None
@@ -48,54 +66,48 @@ def acquire_satellite_data(
     assert expanded_dam_bbox.crs != CRS.WGS84, "acquire_satellite_data requires UTM bbox"
     assert resolution > 0, "Resolution must be positive"
 
-    import os
     debug_dir = os.environ.get("DAM_DEBUG_DIR")
     verbose_dir = os.environ.get("DAM_VERBOSE_DIR")
     is_log = bool(debug_dir or verbose_dir)
-    
+
     if is_log:
         import time
-        import matplotlib
-        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         from pipeline.visuals import normalize_rgb
-        
-        time.sleep(1.5)  # Enforce rate limit backoff
+
+        time.sleep(1.5)
         if wants_debugs:
-            print("Applying 1.5s Rate Limiter to protect Sentinel Hub API limits.")
-            
+            logger.info("Applying 1.5s Rate Limiter to protect Sentinel Hub API limits.")
+
         if not use_sar:
-            wants_rgb = True  # Force RGB fetching to capture diagnostic optical images
-            
+            wants_rgb = True
+
         try:
             start_str, end_str = time_interval
             interval_stamp = f"{start_str}_to_{end_str}"
         except:
-            interval_stamp = str(time_interval).replace('/','-')
+            interval_stamp = str(time_interval).replace('/', '-')
 
     if use_sar:
         if wants_debugs:
-            print("Fetching SAR Radar Data...")
+            logger.info("Fetching SAR Radar Data...")
         sar_bands = request_sar_data(
             aoi=expanded_dam_bbox,
             time_interval=time_interval,
             resolution=resolution,
         )
-        if verbose_dir and np.array(sar_bands).size > 0:
-            plt.figure(figsize=(8,8))
+        if is_log and verbose_dir and np.array(sar_bands).size > 0:
+            plt.figure(figsize=(8, 8))
             plt.imshow(normalize_rgb(np.array(sar_bands)), cmap="gray")
             plt.title(f"SAR VV Backscatter - {interval_stamp}")
             plt.savefig(os.path.join(verbose_dir, f"SAR_VV_{interval_stamp}.png"))
             plt.close()
-            
-        if wants_mask or wants_area:
-            sar_threshold = 0.05
-            if wants_debugs:
-                print(f"Applying SAR threshold {sar_threshold} to VV backscatter...")
-            mask_arr = sar_water_mask(sar_bands, sar_threshold)
 
-            if verbose_dir and np.array(mask_arr).size > 0:
-                plt.figure(figsize=(8,8))
+        if wants_mask or wants_area:
+            mask_arr = sar_water_mask(sar_bands)
+
+            if is_log and verbose_dir and np.array(mask_arr).size > 0:
+                plt.figure(figsize=(8, 8))
                 plt.imshow(mask_arr, cmap="Blues")
                 plt.title(f"SAR Water Mask - {interval_stamp}")
                 plt.savefig(os.path.join(verbose_dir, f"SAR_Mask_{interval_stamp}.png"))
@@ -103,19 +115,20 @@ def acquire_satellite_data(
 
             if wants_area:
                 water_pixels = np.sum(mask_arr)
-                water_area = water_pixels * resolution * resolution
+                water_area = float(water_pixels * resolution * resolution)
 
         return SatelliteData(
             rgb=None,
             ndwi=None,
             mask=mask_arr,
+            sar=sar_bands,
             water_area_m2=water_area,
             resolution=resolution,
         )
 
     if wants_rgb:
         if wants_debugs:
-            print("Fetching RGB Data...")
+            logger.info("Fetching RGB Data...")
         rgb = request_rgb_data(
             aoi=expanded_dam_bbox,
             time_interval=time_interval,
@@ -124,7 +137,7 @@ def acquire_satellite_data(
         if is_log and rgb is not None:
             rgb_arr = np.array(rgb)
             if rgb_arr.size > 0 and rgb_arr.shape[0] > 0 and rgb_arr.shape[1] > 0:
-                plt.figure(figsize=(8,8))
+                plt.figure(figsize=(8, 8))
                 plt.imshow(normalize_rgb(rgb_arr))
                 plt.title(f"Optical RGB - {interval_stamp}")
                 if debug_dir:
@@ -136,18 +149,18 @@ def acquire_satellite_data(
     needs_ndwi = wants_ndwi or wants_mask or wants_area
     if needs_ndwi:
         if wants_debugs:
-            print("Getting NDWI bands...")
+            logger.info("Getting NDWI bands...")
         ndwi_bands = request_sentinel_data(
             aoi=expanded_dam_bbox,
             time_interval=time_interval,
             resolution=resolution,
         )
         if wants_debugs:
-            print("Computing NDWI...")
+            logger.info("Computing NDWI...")
         ndwi_arr = np.array(compute_ndwi(ndwi_bands))
-        
-        if verbose_dir and ndwi_arr.size > 0 and ndwi_arr.shape[0] > 0:
-            plt.figure(figsize=(8,8))
+
+        if is_log and verbose_dir and ndwi_arr.size > 0 and ndwi_arr.shape[0] > 0:
+            plt.figure(figsize=(8, 8))
             plt.imshow(ndwi_arr, cmap="viridis")
             plt.title(f"NDWI Computed - {interval_stamp}")
             plt.savefig(os.path.join(verbose_dir, f"NDWI_{interval_stamp}.png"))
@@ -155,11 +168,11 @@ def acquire_satellite_data(
 
     if wants_mask or wants_area:
         if wants_debugs:
-            print("Applying water threshold to NDWI...")
+            logger.info("Applying water threshold to NDWI...")
         mask_arr = np.array(water_mask(ndwi_arr.tolist(), threshold))
 
-        if verbose_dir and mask_arr.size > 0 and mask_arr.shape[0] > 0:
-            plt.figure(figsize=(8,8))
+        if is_log and verbose_dir and mask_arr.size > 0 and mask_arr.shape[0] > 0:
+            plt.figure(figsize=(8, 8))
             plt.imshow(mask_arr, cmap="Blues")
             plt.title(f"Optical Water Mask - {interval_stamp}")
             plt.savefig(os.path.join(verbose_dir, f"Optical_Mask_{interval_stamp}.png"))
@@ -167,21 +180,28 @@ def acquire_satellite_data(
 
         if wants_area:
             water_pixels = np.sum(mask_arr)
-            water_area = water_pixels * resolution * resolution
+            water_area = float(water_pixels * resolution * resolution)
 
     return SatelliteData(
         rgb=rgb,
         ndwi=ndwi_arr,
         mask=mask_arr,
+        sar=None,
         water_area_m2=water_area,
         resolution=resolution,
     )
 
 
-from sentinel.tile_stream import split_bbox_into_tiles
-def make_grid(
-        expanded_dam_bbox : BBox,
-        tile_size : int = 2000,
-    ) -> list:
+def make_grid(expanded_dam_bbox: BBox, tile_size: int = 2000) -> List[BBox]:
+    """
+    Splits a bounding box into a grid of tiles.
+
+    :param expanded_dam_bbox: Bounding box to split.
+    :type expanded_dam_bbox: BBox
+    :param tile_size: Tile side length in meters.
+    :type tile_size: int
+    :return: List of tile bounding boxes.
+    :rtype: List[BBox]
+    """
     tiles = split_bbox_into_tiles(expanded_dam_bbox, tile_size_m=tile_size)
     return tiles

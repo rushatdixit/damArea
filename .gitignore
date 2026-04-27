@@ -27,5 +27,6 @@ fetch_dam/dam_database.json
 
 # Local Pipeline Caches
 .cache/
-.debug/
-.deep_debug/
+debug/
+deep_debug/
+your_outputs/
