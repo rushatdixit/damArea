@@ -6,3 +6,4 @@ python-dotenv
 scikit-image
 scipy
 joblib
+pandas
