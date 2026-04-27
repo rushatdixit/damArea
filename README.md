@@ -60,6 +60,23 @@ The pipeline is entirely controlled through a robust CLI with several subcommand
 
 ```bash
 damArea <subcommand> [options]
+To use the global `damArea` command efficiently from any terminal session, you map an alias in your shell configuration to automatically handle the Python execution and paths.
+
+### Global Command Setup (Mac/Linux)
+
+Run the following from the root directory of this repository:
+
+```bash
+echo "alias damArea=\"PYTHONPATH=\$(pwd) python3 \$(pwd)/main.py\"" >> ~/.zshrc
+source ~/.zshrc
+```
+*(Note: If you use bash instead of zsh, replace `.zshrc` with `.bashrc`)*
+
+Now you can run the pipeline directly:
+
+```bash
+damArea "Dam Name"
+damArea "dam_name"
 ```
 
 ### Core Pipeline (`run`)
