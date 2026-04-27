@@ -11,6 +11,9 @@ from sentinel.request import request_rgb_data, request_sentinel_data, request_sa
 from sentinel.sar import sar_water_mask
 from sentinel.tile_stream import split_bbox_into_tiles
 from objects import SatelliteData
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def acquire_satellite_data(
@@ -69,14 +72,12 @@ def acquire_satellite_data(
 
     if is_log:
         import time
-        import matplotlib
-        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         from pipeline.visuals import normalize_rgb
 
         time.sleep(1.5)
         if wants_debugs:
-            print("Applying 1.5s Rate Limiter to protect Sentinel Hub API limits.")
+            logger.info("Applying 1.5s Rate Limiter to protect Sentinel Hub API limits.")
 
         if not use_sar:
             wants_rgb = True
@@ -89,7 +90,7 @@ def acquire_satellite_data(
 
     if use_sar:
         if wants_debugs:
-            print("Fetching SAR Radar Data...")
+            logger.info("Fetching SAR Radar Data...")
         sar_bands = request_sar_data(
             aoi=expanded_dam_bbox,
             time_interval=time_interval,
@@ -127,7 +128,7 @@ def acquire_satellite_data(
 
     if wants_rgb:
         if wants_debugs:
-            print("Fetching RGB Data...")
+            logger.info("Fetching RGB Data...")
         rgb = request_rgb_data(
             aoi=expanded_dam_bbox,
             time_interval=time_interval,
@@ -148,14 +149,14 @@ def acquire_satellite_data(
     needs_ndwi = wants_ndwi or wants_mask or wants_area
     if needs_ndwi:
         if wants_debugs:
-            print("Getting NDWI bands...")
+            logger.info("Getting NDWI bands...")
         ndwi_bands = request_sentinel_data(
             aoi=expanded_dam_bbox,
             time_interval=time_interval,
             resolution=resolution,
         )
         if wants_debugs:
-            print("Computing NDWI...")
+            logger.info("Computing NDWI...")
         ndwi_arr = np.array(compute_ndwi(ndwi_bands))
 
         if is_log and verbose_dir and ndwi_arr.size > 0 and ndwi_arr.shape[0] > 0:
@@ -167,7 +168,7 @@ def acquire_satellite_data(
 
     if wants_mask or wants_area:
         if wants_debugs:
-            print("Applying water threshold to NDWI...")
+            logger.info("Applying water threshold to NDWI...")
         mask_arr = np.array(water_mask(ndwi_arr.tolist(), threshold))
 
         if is_log and verbose_dir and mask_arr.size > 0 and mask_arr.shape[0] > 0:

@@ -13,6 +13,9 @@ from typing import Tuple
 from functools import wraps
 
 from joblib import Memory
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class NoImageryFoundError(Exception):
@@ -46,10 +49,10 @@ def retry_with_backoff(retries: int = 5, backoff_in_seconds: int = 2):
                     if isinstance(e, NoImageryFoundError):
                         raise e
                     if x == retries:
-                        print(f"Failed after {retries} retries.")
+                        logger.error(f"Failed after {retries} retries.")
                         raise e
                     sleep_time = (backoff_in_seconds * 2 ** x)
-                    print(f"Request failed: {e}. Retrying in {sleep_time} seconds (Attempt {x+1}/{retries})...")
+                    logger.warning(f"Request failed: {e}. Retrying in {sleep_time} seconds (Attempt {x+1}/{retries})...")
                     time.sleep(sleep_time)
                     x += 1
         return wrapped

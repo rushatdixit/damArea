@@ -15,6 +15,10 @@ from objects import TimeSeries, Dam
 from pipeline.raw_data import acquire_satellite_data
 from pipeline.processing import choose_reservoir
 from sentinel.request import NoImageryFoundError
+from sentinel.rate_limiter import tracker
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def compute_timeseries(
@@ -88,6 +92,12 @@ def compute_timeseries(
         c_date, n_date = interval_tuple
         sub_int_str = (c_date.strftime("%Y-%m-%d"), n_date.strftime("%Y-%m-%d"))
 
+        # Proactively throttle if rate limit is dangerously low
+        try:
+            tracker.throttle_if_needed(min_remaining=20, sleep_time=5)
+        except Exception as e:
+            logger.warning(f"Rate tracker error: {e}")
+
         def attempt_sar() -> Optional[Tuple[datetime.datetime, float]]:
             """
             Attempts SAR-based area estimation as a fallback.
@@ -95,7 +105,7 @@ def compute_timeseries(
             :return: Tuple of (date, area_km2) or None if SAR also fails.
             :rtype: Optional[Tuple[datetime.datetime, float]]
             """
-            print(f"Falling back to Sentinel-1 SAR for interval {sub_int_str}...")
+            logger.info(f"Falling back to Sentinel-1 SAR for interval {sub_int_str}...")
             try:
                 sar_data = acquire_satellite_data(
                     expanded_dam_bbox=aoi, time_interval=sub_int_str, resolution=resolution,
@@ -108,7 +118,7 @@ def compute_timeseries(
                 )
                 return (c_date, sar_water.area_km2)
             except (NoImageryFoundError, ValueError) as e:
-                print(f"SAR also failed for interval {sub_int_str}: {e}")
+                logger.warning(f"SAR also failed for interval {sub_int_str}: {e}")
                 return None
 
         try:
@@ -125,7 +135,7 @@ def compute_timeseries(
 
             if expected_area_km2 is not None and computed_area < (expected_area_km2 / 2):
                 if allow_sar:
-                    print(f"Optical area {computed_area:.2f} < threshold ({expected_area_km2/2:.2f}) for {sub_int_str}. Clouds likely obscured reservoir.")
+                    logger.info(f"Optical area {computed_area:.2f} < threshold ({expected_area_km2/2:.2f}) for {sub_int_str}. Clouds likely obscured reservoir.")
                     return attempt_sar()
                 else:
                     return (c_date, computed_area)
@@ -134,16 +144,16 @@ def compute_timeseries(
 
         except NoImageryFoundError:
             if not allow_sar:
-                print(f"Skipping interval {sub_int_str}: no imagery (SAR disabled)")
+                logger.warning(f"Skipping interval {sub_int_str}: no imagery (SAR disabled)")
                 return None
-            print(f"Clouds detected for interval {sub_int_str}.")
+            logger.info(f"Clouds detected for interval {sub_int_str}.")
             return attempt_sar()
 
         except ValueError as e:
             if not allow_sar:
-                print(f"Skipping interval {sub_int_str}: {e}")
+                logger.warning(f"Skipping interval {sub_int_str}: {e}")
                 return None
-            print(f"Optical extraction failed for {sub_int_str}: {e}")
+            logger.warning(f"Optical extraction failed for {sub_int_str}: {e}")
             return attempt_sar()
 
     times: List[datetime.datetime] = []
@@ -183,6 +193,12 @@ def compute_timeseries(
             if pd.Timestamp(c_date) == pd.Timestamp(max_date):
                 max_date_str = c_date.strftime("%Y-%m-%d") + "," + n_date.strftime("%Y-%m-%d")
                 break
+                
+        os.makedirs("outputs", exist_ok=True)
+        safe_name = dam.name.replace(" ", "_").lower()
+        csv_path = os.path.join("outputs", f"{safe_name}_timeseries.csv")
+        df.to_csv(csv_path)
+        logger.info(f"Saved timeseries data to {csv_path}")
 
     return TimeSeries(
         df=df,
