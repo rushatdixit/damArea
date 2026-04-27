@@ -17,7 +17,9 @@ from pipeline.processing import choose_reservoir, mask_to_bbox
 from pipeline.data_to_area import get_pixel_area
 from pipeline.utilities import adjust_resolution
 from constants import DEFAULT_RESOLUTION, WATER_MASK_THRESHOLD
+from utils.logger import get_logger
 
+logger = get_logger(__name__)
 
 def run_area_estimation(
     dam_name: str,
@@ -45,7 +47,7 @@ def run_area_estimation(
     :return: Area estimation result with all intermediate data.
     :rtype: AreaEstimationResult
     """
-    print("Initial 50km x 50km bounds selected.")
+    logger.info("Initial 50km x 50km bounds selected.")
     utm_crs = CRS.get_utm_from_wgs84(dam.longitude, dam.latitude)
     dam_x, dam_y = transform_point((dam.longitude, dam.latitude), CRS.WGS84, utm_crs)
 
@@ -69,13 +71,13 @@ def run_area_estimation(
     )
 
     reservoir_bbox = mask_to_bbox(
-        coarse_reservoir.mask[0],
+        coarse_reservoir.mask,
         expanded_dam_bbox,
         resolution=coarse_resolution,
     )
 
     resolution = adjust_resolution(reservoir_bbox, resolution=DEFAULT_RESOLUTION)
-    print(f"Optimal resolution for reservoir AOI: {resolution}")
+    logger.info(f"Optimal resolution for reservoir AOI: {resolution}")
 
     refined_data = acquire_satellite_data(
         reservoir_bbox,
@@ -92,12 +94,12 @@ def run_area_estimation(
     )
 
     area_m2 = get_pixel_area(
-        refined_reservoir.mask[0],
+        refined_reservoir.mask,
         resolution=resolution,
     )
 
     area_km2 = area_m2 / 1e6
-    print(f"\nBest Area Estimate: {area_km2:.4f} km²")
+    logger.info(f"Best Area Estimate: {area_km2:.4f} km²")
 
     return AreaEstimationResult(
         area_km2=area_km2,
@@ -159,7 +161,7 @@ def run_uncertainty_analysis(
         sampling_density=4,
     )
 
-    print("\nComputing Coarse Resolution Uncertainty...")
+    logger.info("Computing Coarse Resolution Uncertainty...")
     coarse_unc = coarse_resolution_sensitivity(
         dam=dam,
         base_resolution=resolution,
@@ -213,7 +215,7 @@ def run_timeseries(
     """
     from uncertainty.timeseries_analysis import compute_timeseries
 
-    print(f"\nComputing Area over Time for interval {time_interval}...")
+    logger.info(f"Computing Area over Time for interval {time_interval}...")
     timeseries_data = compute_timeseries(
         dam=dam,
         resolution=resolution,
@@ -269,7 +271,7 @@ def run_extrema_analysis(
         """
         start_str, end_str = date_str.split(",")
         interval = (start_str, end_str)
-        print(f"\n--- Fetching Extrema Context for {interval} ---")
+        logger.info(f"Fetching Extrema Context for {interval}")
 
         rgb = None
         ndwi = None
@@ -281,7 +283,7 @@ def run_extrema_analysis(
         try:
             rgb = request_rgb_data(aoi=reservoir_bbox, time_interval=interval, resolution=resolution, maxcc=1.0)
         except Exception as e:
-            print(f"  RGB fetch failed: {e}")
+            logger.warning(f"RGB fetch failed: {e}")
 
         try:
             ndwi_bands = request_sentinel_data(aoi=reservoir_bbox, time_interval=interval, resolution=resolution)
@@ -296,7 +298,7 @@ def run_extrema_analysis(
             else:
                 opt_sel = opt_mask
         except Exception as e:
-            print(f"  Optical processing failed: {e}")
+            logger.warning(f"Optical processing failed: {e}")
 
         try:
             sar_raw = request_sar_data(aoi=reservoir_bbox, time_interval=interval, resolution=resolution)
@@ -310,7 +312,7 @@ def run_extrema_analysis(
             else:
                 sar_sel = sar_mask_arr.astype(int)
         except Exception as e:
-            print(f"  SAR processing failed: {e}")
+            logger.warning(f"SAR processing failed: {e}")
 
         return ExtremaResult(
             date_str=start_str,
@@ -326,11 +328,11 @@ def run_extrema_analysis(
     max_extrema: Optional[ExtremaResult] = None
 
     if timeseries_data.min_date_str:
-        print("\nProcessing Global MINIMUM area date...")
+        logger.info("Processing Global MINIMUM area date...")
         min_extrema = fetch_extrema_for_interval(timeseries_data.min_date_str)
 
     if timeseries_data.max_date_str:
-        print("\nProcessing Global MAXIMUM area date...")
+        logger.info("Processing Global MAXIMUM area date...")
         max_extrema = fetch_extrema_for_interval(timeseries_data.max_date_str)
 
     return ExtremaAnalysisResult(
