@@ -119,6 +119,8 @@ def run_preliminary_tests():
     else:
         print("⚠️ Some checks failed. Please resolve the issues above before running main.py.")
 
+    return all_passed
+
 if __name__ == "__main__":
     # Ensure the root directory is in sys.path so we can import packages correctly
     project_root = os.path.dirname(os.path.abspath(__file__))
