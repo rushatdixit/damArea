@@ -194,9 +194,9 @@ def compute_timeseries(
                 max_date_str = c_date.strftime("%Y-%m-%d") + "," + n_date.strftime("%Y-%m-%d")
                 break
                 
-        os.makedirs("outputs", exist_ok=True)
+        os.makedirs("your_outputs", exist_ok=True)
         safe_name = dam.name.replace(" ", "_").lower()
-        csv_path = os.path.join("outputs", f"{safe_name}_timeseries.csv")
+        csv_path = os.path.join("your_outputs", f"{safe_name}_timeseries.csv")
         df.to_csv(csv_path)
         logger.info(f"Saved timeseries data to {csv_path}")
 

@@ -259,7 +259,7 @@ def main() -> None:
     # VALIDATE command
     parser_validate = subparsers.add_parser("validate", help="Data integrity checks on pipeline outputs")
     parser_validate.add_argument("dam_name", type=str)
-    parser_validate.add_argument("--outputs-dir", type=str, default="./outputs")
+    parser_validate.add_argument("--outputs-dir", type=str, default="./your_outputs")
     parser_validate.add_argument("--strict", action="store_true")
     
     # RATE-STATUS command

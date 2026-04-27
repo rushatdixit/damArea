@@ -10,7 +10,7 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def validate_outputs(dam_name: str, outputs_dir: str = "./outputs", strict: bool = False) -> None:
+def validate_outputs(dam_name: str, outputs_dir: str = "./your_outputs", strict: bool = False) -> None:
     """
     Validates pipeline outputs (such as timeseries data) for physical plausibility
     and cache staleness anomalies.

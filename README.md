@@ -143,7 +143,7 @@ damArea inspect compare optical.pkl sar.pkl         # Computes Intersection over
 ```
 
 ### 7. Output Sanity Validation (`validate`)
-Post-flight sanity checks on your final `outputs/*.csv` timeseries data. Flags impossible physical surface areas, identically duplicated timestamps (cache rot), and massive unphysical variations (cloud leaks).
+Post-flight sanity checks on your final `your_outputs/*.csv` timeseries data. Flags impossible physical surface areas, identically duplicated timestamps (cache rot), and massive unphysical variations (cloud leaks).
 ```bash
 damArea validate "Hoover Dam" --strict
 ```
