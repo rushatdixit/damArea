@@ -10,6 +10,9 @@ from pathlib import Path
 from functools import lru_cache
 from sentinelhub import BBox, CRS
 from objects import FetchedDamData
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 DATABASE_PATH: Path = Path(__file__).parent / "dam_database.json"
 _DB_CACHE: Optional[Dict] = None
@@ -80,7 +83,7 @@ def dam_name_to_coords(dam_name: str) -> FetchedDamData:
     db = load_database()
 
     if key in db:
-        print("Found dam in database. Skipping openstreetmap query.")
+        logger.info("Found dam in database. Skipping openstreetmap query.")
         coords = db[key]
         return FetchedDamData(coords["latitude"], coords["longitude"], coords["bbox"])
 
@@ -95,12 +98,12 @@ def dam_name_to_coords(dam_name: str) -> FetchedDamData:
         }
 
         response = requests.get(url, params=params, headers=headers, timeout=10)
-        print("Searching for:", params["q"])
+        logger.debug(f"Searching for: {params['q']}")
         time.sleep(1)
 
         response.raise_for_status()
         data = response.json()
-        print("Raw response: ", data)
+        logger.debug(f"Raw response: {data}")
 
         if len(data) > 0:
             result = data[0]
