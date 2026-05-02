@@ -56,7 +56,9 @@ The project utilizes a robust, modular pipeline:
 
 ## Usage
 
-The pipeline is entirely controlled through a robust CLI with several subcommands:
+The pipeline is entirely controlled through a robust CLI with several subcommands.
+
+**First-Time Execution:** The very first time you execute the `damArea` CLI, a suite of preliminary diagnostic tests will automatically run. It verifies your Python environment, dependencies, local paths, and API credentials to ensure a seamless experience.
 
 ```bash
 damArea <subcommand> [options]
@@ -110,6 +112,7 @@ damArea run "Bhakra Nangal" --start-date 2023-01-01 --end-date 2023-12-31
 | `--extrema` | `y`, `n` | `n` | Show diagnostic dashboard for global min/max area dates |
 | `--debug` | `y`, `n` | `n` | Exports RGB diagnostic images to `debug/` |
 | `--verbose` | `y`, `n` | `n` | Exports RGB/NDWI/Masks to `deep_debug/` |
+| `--delete-debug` | `y`, `n` | `n` | Permanently deletes generated debug directories |
 
 ---
 
@@ -143,7 +146,7 @@ Sentinel Hub imposes strict rate limits. This tool fetches your current availabl
 damArea rate-status
 damArea rate-status --watch  # Live-updating 10s dashboard
 ```
-*(Note: the pipeline worker pool also automatically throttles itself if this remaining limit drops below 20 requests)*
+*(Note: the pipeline worker pool automatically throttles itself if this remaining limit drops below 20 requests. It also gracefully intercepts and handles Sentinel Hub 500-level service outages without crashing.)*
 
 ### 5. Configuration Auditor (`config`)
 Tired of hunting through `.env`, `constants.py`, and hardcoded files? This prints a unified table of the active pipeline configuration.
