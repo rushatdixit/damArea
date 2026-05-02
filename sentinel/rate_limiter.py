@@ -64,8 +64,19 @@ class RateLimitTracker:
             "Accept": "application/json"
         }
         
-        resp = requests.get(url, headers=headers, timeout=10)
-        resp.raise_for_status()
+        try:
+            resp = requests.get(url, headers=headers, timeout=10)
+            resp.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code >= 500:
+                logger.debug(f"Sentinel Hub rate limit endpoint is temporarily unavailable ({e.response.status_code}). Using cached limits.")
+                return {
+                    "limit": self.limit,
+                    "remaining": self.remaining,
+                    "reset_at": self.reset_at,
+                    "pu_spent": self.pu_spent
+                }
+            raise
         
         # Parse headers
         # Sentinel Hub returns: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
